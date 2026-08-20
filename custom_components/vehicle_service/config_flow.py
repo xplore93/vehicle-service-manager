@@ -14,57 +14,14 @@ from homeassistant.helpers import selector
 
 from .const import (
     DOMAIN,
-    CONF_MAKE, CONF_MODEL, CONF_EZ_DATE, CONF_KM, CONF_PLATE,
+    CONF_MAKE, CONF_MODEL, CONF_KM, CONF_PLATE,
     CONF_VIN, CONF_HSN, CONF_ENTITY_KM,
     CONF_SERVICES, CONF_INTERVALS,
     CONF_INITIAL_HU_DATE, CONF_INITIAL_HU_KM,
-    ALL_SERVICE_IDS, SERVICE_LABELS, SERVICE_INTERVAL_TYPE, DEFAULT_INTERVALS,
-    SERVICE_HU,
+    ALL_SERVICE_IDS, SERVICE_INTERVAL_TYPE, DEFAULT_INTERVALS,
 )
 
 _LOGGER = logging.getLogger(__name__)
-
-MONTHS_DE = [
-    "Januar","Februar","März","April","Mai","Juni",
-    "Juli","August","September","Oktober","November","Dezember"
-]
-
-# Clean service labels for UI — no brand references
-UI_SERVICE_LABELS = {
-    "oil":          "Ölwechsel",
-    "inspection":   "Inspektion",
-    "brake_fluid":  "Bremsflüssigkeit",
-    "cabin_filter": "Innenraumfilter",
-    "air_filter":   "Luftfilter",
-    "spark_plugs":  "Zündkerzen (nur Benziner)",
-    "fuel_filter":  "Kraftstofffilter (nur Diesel)",
-    "gearbox":      "Getriebeöl",
-    "haldex":       "Haldex-Öl (nur Allrad)",
-    "ac":           "Klimawartung",
-    "hu":           "Hauptuntersuchung (HU/AU)",
-}
-
-# German labels for interval fields
-INTERVAL_LABELS_DE = {
-    "oil_km":           "Ölwechsel – km-Intervall",
-    "oil_months":       "Ölwechsel – Monate",
-    "inspection_km":    "Inspektion – km-Intervall",
-    "inspection_months":"Inspektion – Monate",
-    "brake_fluid_months":"Bremsflüssigkeit – Monate",
-    "cabin_filter_km":  "Innenraumfilter – km-Intervall",
-    "cabin_filter_months":"Innenraumfilter – Monate",
-    "air_filter_km":    "Luftfilter – km-Intervall",
-    "air_filter_months":"Luftfilter – Monate",
-    "spark_plugs_km":   "Zündkerzen – km-Intervall",
-    "spark_plugs_months":"Zündkerzen – Monate",
-    "fuel_filter_km":   "Kraftstofffilter – km-Intervall",
-    "fuel_filter_months":"Kraftstofffilter – Monate",
-    "gearbox_km":       "Getriebeöl – km-Intervall",
-    "haldex_km":        "Haldex-Öl – km-Intervall",
-    "haldex_months":    "Haldex-Öl – Monate",
-    "ac_months":        "Klimawartung – Monate",
-    "hu_months":        "HU/AU – Monate",
-}
 
 def _year_options() -> list[str]:
     current = date.today().year
@@ -85,6 +42,19 @@ class VehicleServiceConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     def __init__(self) -> None:
         self._vehicle_data: dict[str, Any] = {}
+
+    def _identity_taken(self, plate: str, vin: str) -> bool:
+        """True if a vehicle with this plate or VIN is already configured."""
+        plate = (plate or "").strip().lower()
+        vin = (vin or "").strip().upper()
+        if not plate and not vin:
+            return False
+        for entry in self.hass.config_entries.async_entries(DOMAIN):
+            e_plate = (entry.data.get(CONF_PLATE) or "").strip().lower()
+            e_vin = (entry.data.get(CONF_VIN) or "").strip().upper()
+            if (plate and e_plate == plate) or (vin and e_vin == vin):
+                return True
+        return False
 
     # ── Step 1: Vehicle data ──────────────────────────────────────────────────
 
@@ -120,6 +90,8 @@ class VehicleServiceConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 errors[CONF_VIN] = "vin_length"
 
             if not errors:
+                if self._identity_taken(user_input.get(CONF_PLATE, ""), vin):
+                    return self.async_abort(reason="already_configured")
                 self._vehicle_data.update({
                     CONF_MAKE:      user_input[CONF_MAKE].strip(),
                     CONF_MODEL:     user_input[CONF_MODEL].strip(),
@@ -155,7 +127,6 @@ class VehicleServiceConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             step_id="user",
             data_schema=schema,
             errors=errors,
-            description_placeholders={"step": "1/3 – Fahrzeugdaten"},
         )
 
     # ── Step 2: Service points — NO defaults, start at top ───────────────────
@@ -229,12 +200,6 @@ class VehicleServiceConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             step_id="intervals",
             data_schema=vol.Schema(fields),
             errors={},
-            description_placeholders={
-                "disclaimer": (
-                    "Richtwerte – bitte im Serviceheft prüfen. "
-                    "0 = nicht tracken. Keine Haftung für falsche Werte."
-                ),
-            },
         )
 
     @staticmethod
@@ -243,7 +208,7 @@ class VehicleServiceConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         return VehicleServiceOptionsFlow(config_entry)
 
 
-class VehicleServiceOptionsFlow(config_entries.OptionsFlow):
+class VehicleServiceOptionsFlow(config_entries.OptionsFlowWithReload):
     """Allow editing ALL vehicle data after setup."""
 
     def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
@@ -280,7 +245,7 @@ class VehicleServiceOptionsFlow(config_entries.OptionsFlow):
                     CONF_HSN:       user_input.get(CONF_HSN, "").strip(),
                     CONF_ENTITY_KM: user_input.get(CONF_ENTITY_KM) or "",
                 })
-                return await self.async_step_intervals()
+                return await self.async_step_services()
 
         # Parse existing EZ date
         ez_date = data.get("ez_date", "")
@@ -310,15 +275,43 @@ class VehicleServiceOptionsFlow(config_entries.OptionsFlow):
             step_id="init",
             data_schema=schema,
             errors=errors,
-            description_placeholders={"step": "Fahrzeugdaten bearbeiten"},
         )
+
+    async def async_step_services(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Step 2: Edit which service points are tracked."""
+        current = self._config_entry.data.get(CONF_SERVICES, [])
+
+        if user_input is not None:
+            selected = [sid for sid in ALL_SERVICE_IDS if user_input.get(sid, False)]
+            if not selected:
+                return self.async_show_form(
+                    step_id="services",
+                    data_schema=self._options_services_schema(current),
+                    errors={"base": "no_service_selected"},
+                )
+            self._new_data[CONF_SERVICES] = selected
+            return await self.async_step_intervals()
+
+        return self.async_show_form(
+            step_id="services",
+            data_schema=self._options_services_schema(current),
+        )
+
+    def _options_services_schema(self, current: list[str]) -> vol.Schema:
+        """Pre-check the currently tracked service points."""
+        fields: dict = {}
+        for sid in ALL_SERVICE_IDS:
+            fields[vol.Optional(sid, default=sid in current)] = bool
+        return vol.Schema(fields)
 
     async def async_step_intervals(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
-        """Step 2: Edit intervals."""
+        """Step 3: Edit intervals."""
         data     = self._config_entry.data
-        selected = data.get(CONF_SERVICES, [])
+        selected = self._new_data.get(CONF_SERVICES) or data.get(CONF_SERVICES, [])
         cur_intv = data.get(CONF_INTERVALS, {})
 
         if user_input is not None:
@@ -336,7 +329,7 @@ class VehicleServiceOptionsFlow(config_entries.OptionsFlow):
                         entry["months"] = v
                 new_intervals[sid] = entry
 
-            # Write everything back and reload
+            # Write everything back; OptionsFlowWithReload reloads the entry on completion
             self.hass.config_entries.async_update_entry(
                 self._config_entry,
                 data={
@@ -345,7 +338,6 @@ class VehicleServiceOptionsFlow(config_entries.OptionsFlow):
                     CONF_INTERVALS: new_intervals,
                 },
             )
-            await self.hass.config_entries.async_reload(self._config_entry.entry_id)
             return self.async_create_entry(title="", data={})
 
         fields: dict = {}
@@ -363,7 +355,4 @@ class VehicleServiceOptionsFlow(config_entries.OptionsFlow):
         return self.async_show_form(
             step_id="intervals",
             data_schema=vol.Schema(fields),
-            description_placeholders={
-                "disclaimer": "0 = nicht tracken. Keine Haftung für falsche Werte."
-            },
         )

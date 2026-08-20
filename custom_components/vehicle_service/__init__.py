@@ -1,6 +1,7 @@
 """Vehicle Service Manager integration."""
 from __future__ import annotations
 
+import asyncio
 import logging
 from typing import Any
 
@@ -14,70 +15,31 @@ import homeassistant.helpers.config_validation as cv
 
 from .const import (
     DOMAIN, PLATFORMS,
-    CONF_ENTITY_KM, CONF_SERVICES, CONF_INTERVALS,
+    CONF_ENTITY_KM, CONF_KM, CONF_SERVICES, CONF_INTERVALS,
     HA_SERVICE_ADD_ENTRY, HA_SERVICE_UPDATE_KM,
     HA_SERVICE_ADD_REPAIR, HA_SERVICE_ADD_TIRE,
     SERVICE_HU, CONF_INITIAL_HU_DATE, CONF_INITIAL_HU_KM,
+    EVENT_SERVICE_ENTRY_ADDED, EVENT_KM_UPDATED,
+    ALL_SERVICE_IDS,
 )
 from .store import get_store, VehicleServiceStore
 
 _LOGGER = logging.getLogger(__name__)
 
-CARD_VERSION = "1.6.0"
+# Keep references to fire-and-forget tasks so they aren't garbage-collected mid-flight
+_BACKGROUND_TASKS: set[asyncio.Task] = set()
 
 
-async def _async_register_lovelace_resource(hass: HomeAssistant) -> None:
-    """Persistently register both card JS files in Lovelace resources."""
-    try:
-        from homeassistant.components.lovelace import resources as lovelace_resources
-        collection = lovelace_resources.ResourceStorageCollection(
-            hass, hass.data.get("lovelace", {})
-        )
-        await collection.async_load()
-        existing_urls = [item.get("url", "") for item in collection.async_items()]
-
-        for card_url in CARD_RESOURCES:
-            versioned_url = f"{card_url}?v={CARD_VERSION}"
-            already = False
-            # Check if already registered (any version of this file)
-            # Find and remove any existing registration for this file (any version)
-            for item in list(collection.async_items()):
-                if card_url in item.get("url", ""):
-                    if item.get("url") == versioned_url:
-                        # Already on correct version, skip
-                        _LOGGER.debug("Lovelace resource up-to-date: %s", versioned_url)
-                        already = True
-                        break
-                    # Old version found - remove it
-                    try:
-                        await collection.async_delete_item(item["id"])
-                        _LOGGER.info("Removed old Lovelace resource: %s", item.get("url"))
-                    except Exception:
-                        pass
-            if already:
-                continue
-            await collection.async_create_item({
-                "res_type": "module",
-                "url": versioned_url,
-            })
-            _LOGGER.info("Lovelace resource registered: %s", versioned_url)
-    except Exception as e:
-        _LOGGER.warning(
-            "Could not auto-register Lovelace resources (%s). "
-            "Please add manually in Settings → Dashboards → Resources: "
-            "%s (JavaScript Module)",
-            e, ", ".join(f"{u}?v={CARD_VERSION}" for u in CARD_RESOURCES)
-        )
+def _spawn(hass: HomeAssistant, coro) -> None:
+    """Schedule a coroutine without awaiting it, retaining a task reference."""
+    task = hass.async_create_task(coro)
+    _BACKGROUND_TASKS.add(task)
+    task.add_done_callback(_BACKGROUND_TASKS.discard)
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up one vehicle from a config entry."""
     hass.data.setdefault(DOMAIN, {})
-
-    # Register Lovelace resource once per HA session
-    if not hass.data[DOMAIN].get("_js_registered"):
-        hass.data[DOMAIN]["_js_registered"] = True
-        hass.async_create_task(_async_register_lovelace_resource(hass))
 
     # All config entries share ONE store instance
     store = get_store(hass)
@@ -104,6 +66,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             )
     else:
         _LOGGER.debug("Vehicle %s already in store", vehicle_id)
+        await _sync_entry_to_store(store, entry)
 
     hass.data[DOMAIN][entry.entry_id] = {"vehicle_id": vehicle_id}
 
@@ -118,7 +81,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # entity_km lives in entry.data (options flow reloads entry and writes back there)
     entity_km: str = (entry.data.get(CONF_ENTITY_KM) or "").strip()
     if entity_km:
-        _setup_km_tracking(hass, store, vehicle_id, entity_km)
+        _setup_km_tracking(hass, entry, store, vehicle_id, entity_km)
         # Also read current state immediately so KM is correct right away
         state = hass.states.get(entity_km)
         if state and state.state not in ("unknown", "unavailable"):
@@ -126,12 +89,55 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 current_km = int(float(state.state))
                 vehicle = store.get_vehicle(vehicle_id)
                 if vehicle and current_km > (vehicle.get("km") or 0):
-                    hass.async_create_task(store.async_update_km(vehicle_id, current_km))
+                    _spawn(hass, store.async_update_km(vehicle_id, current_km))
                     _LOGGER.info("Initial KM from entity %s: %d", entity_km, current_km)
             except (ValueError, TypeError):
                 pass
 
     return True
+
+
+# ── Config entry → store sync ─────────────────────────────────────────────────
+
+# entry.data key → store field key
+_ENTRY_FIELD_MAP: dict[str, str] = {
+    "make": "make",
+    "model": "model",
+    "ez_date": "ezDate",
+    "plate": "plate",
+    "vin": "vin",
+    "hsn": "hsn",
+    "entity_km": "entity",
+    "services": "services",
+    "intervals": "intervals",
+}
+
+
+async def _sync_entry_to_store(store: VehicleServiceStore, entry: ConfigEntry) -> None:
+    """Push edited config entry data into the shared store.
+
+    The options flow writes to ``entry.data`` and reloads the entry, but the
+    store is the single source of truth for entities, cards and services —
+    so every setup must push entry.data into the store for existing vehicles.
+    """
+    vehicle_id = entry.data.get("vehicle_id", "")
+    vehicle = store.get_vehicle(vehicle_id)
+    if vehicle is None:
+        return
+
+    updates: dict[str, Any] = {}
+    for data_key, store_key in _ENTRY_FIELD_MAP.items():
+        if data_key in entry.data and vehicle.get(store_key) != entry.data[data_key]:
+            updates[store_key] = entry.data[data_key]
+
+    # KM: higher wins — a live reading must not be clobbered by a stale entry value
+    entry_km = int(entry.data.get(CONF_KM) or 0)
+    if entry_km > (vehicle.get("km") or 0):
+        updates["km"] = entry_km
+
+    if updates:
+        await store.async_update_vehicle(vehicle_id, updates)
+        _LOGGER.info("Synced options to store for %s: %s", vehicle_id, sorted(updates))
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -180,7 +186,8 @@ def _build_initial_vehicle(data: dict[str, Any]) -> dict[str, Any]:
 # ── Live KM tracking ──────────────────────────────────────────────────────────
 
 def _setup_km_tracking(
-    hass: HomeAssistant, store: VehicleServiceStore, vehicle_id: str, entity_id: str,
+    hass: HomeAssistant, entry: ConfigEntry, store: VehicleServiceStore,
+    vehicle_id: str, entity_id: str,
 ) -> None:
     @callback
     def _on_km_state_change(event) -> None:
@@ -191,10 +198,16 @@ def _setup_km_tracking(
             km = int(float(new_state.state))
         except (ValueError, TypeError):
             return
-        hass.async_create_task(store.async_update_km(vehicle_id, km))
-        hass.bus.async_fire(f"{DOMAIN}_km_updated", {"vehicle_id": vehicle_id, "km": km})
+        # Higher wins — an OBD blip or odometer reset must not clobber the store
+        vehicle = store.get_vehicle(vehicle_id)
+        if vehicle is None or km <= (vehicle.get("km") or 0):
+            return
+        _spawn(hass, store.async_update_km(vehicle_id, km))
+        hass.bus.async_fire(EVENT_KM_UPDATED, {"vehicle_id": vehicle_id, "km": km})
 
-    async_track_state_change_event(hass, [entity_id], _on_km_state_change)
+    entry.async_on_unload(
+        async_track_state_change_event(hass, [entity_id], _on_km_state_change)
+    )
     _LOGGER.debug("Tracking KM entity %s for vehicle %s", entity_id, vehicle_id)
 
 
@@ -214,7 +227,7 @@ def _register_websocket(hass: HomeAssistant) -> None:
         vol.Required("vehicle_id"): str,
         vol.Required("entry_date"): str,
         vol.Required("km"): vol.Coerce(int),
-        vol.Required("services"): list,
+        vol.Required("services"): vol.All(cv.ensure_list, [vol.In(ALL_SERVICE_IDS)]),
         vol.Optional("notes", default=""): str,
     })
     @websocket_api.async_response
@@ -232,18 +245,23 @@ def _register_websocket(hass: HomeAssistant) -> None:
         if v and msg["km"] > (v.get("km") or 0):
             await store.async_update_km(vid, msg["km"])
         connection.send_result(msg["id"], {"entry": entry, "vehicle": store.get_vehicle(vid)})
-        hass.bus.async_fire(f"{DOMAIN}_service_entry_added", {"vehicle_id": vid})
+        hass.bus.async_fire(EVENT_SERVICE_ENTRY_ADDED, {"vehicle_id": vid})
 
     @websocket_api.websocket_command({
         vol.Required("type"): f"{DOMAIN}/delete_service_entry",
         vol.Required("vehicle_id"): str,
-        vol.Required("entry_index"): vol.Coerce(int),
+        vol.Required("entry_index"): vol.All(vol.Coerce(int), vol.Range(min=0)),
     })
     @websocket_api.async_response
     async def ws_delete_service_entry(hass, connection, msg):
         store = get_store(hass)
-        await store.async_delete_service_entry(msg["vehicle_id"], msg["entry_index"])
-        connection.send_result(msg["id"], {"vehicle": store.get_vehicle(msg["vehicle_id"])})
+        vid = msg["vehicle_id"]
+        if store.get_vehicle(vid) is None:
+            connection.send_error(msg["id"], "not_found", f"Vehicle {vid} not found")
+            return
+        await store.async_delete_service_entry(vid, msg["entry_index"])
+        hass.bus.async_fire(EVENT_SERVICE_ENTRY_ADDED, {"vehicle_id": vid})
+        connection.send_result(msg["id"], {"vehicle": store.get_vehicle(vid)})
 
     @websocket_api.websocket_command({
         vol.Required("type"): f"{DOMAIN}/add_repair",
@@ -266,18 +284,24 @@ def _register_websocket(hass: HomeAssistant) -> None:
             "cat": msg["category"], "desc": msg.get("description", ""),
             "cost": msg.get("cost", 0),
         })
+        hass.bus.async_fire(EVENT_SERVICE_ENTRY_ADDED, {"vehicle_id": vid})
         connection.send_result(msg["id"], {"vehicle": store.get_vehicle(vid)})
 
     @websocket_api.websocket_command({
         vol.Required("type"): f"{DOMAIN}/delete_repair",
         vol.Required("vehicle_id"): str,
-        vol.Required("repair_index"): vol.Coerce(int),
+        vol.Required("repair_index"): vol.All(vol.Coerce(int), vol.Range(min=0)),
     })
     @websocket_api.async_response
     async def ws_delete_repair(hass, connection, msg):
         store = get_store(hass)
-        await store.async_delete_repair(msg["vehicle_id"], msg["repair_index"])
-        connection.send_result(msg["id"], {"vehicle": store.get_vehicle(msg["vehicle_id"])})
+        vid = msg["vehicle_id"]
+        if store.get_vehicle(vid) is None:
+            connection.send_error(msg["id"], "not_found", f"Vehicle {vid} not found")
+            return
+        await store.async_delete_repair(vid, msg["repair_index"])
+        hass.bus.async_fire(EVENT_SERVICE_ENTRY_ADDED, {"vehicle_id": vid})
+        connection.send_result(msg["id"], {"vehicle": store.get_vehicle(vid)})
 
     @websocket_api.websocket_command({
         vol.Required("type"): f"{DOMAIN}/add_tire",
@@ -312,6 +336,7 @@ def _register_websocket(hass: HomeAssistant) -> None:
             "hl": msg.get("hl", 0.0), "hr": msg.get("hr", 0.0),
         }
         await store.async_add_tire(vid, tire)
+        hass.bus.async_fire(EVENT_SERVICE_ENTRY_ADDED, {"vehicle_id": vid})
         connection.send_result(msg["id"], {"vehicle": store.get_vehicle(vid)})
 
     @websocket_api.websocket_command({
@@ -322,27 +347,37 @@ def _register_websocket(hass: HomeAssistant) -> None:
     @websocket_api.async_response
     async def ws_update_km(hass, connection, msg):
         store = get_store(hass)
-        await store.async_update_km(msg["vehicle_id"], msg["km"])
+        vid = msg["vehicle_id"]
+        if store.get_vehicle(vid) is None:
+            connection.send_error(msg["id"], "not_found", f"Vehicle {vid} not found")
+            return
+        await store.async_update_km(vid, msg["km"])
+        hass.bus.async_fire(EVENT_KM_UPDATED, {"vehicle_id": vid})
         connection.send_result(msg["id"], {"success": True})
 
     @websocket_api.websocket_command({
         vol.Required("type"): f"{DOMAIN}/delete_tire",
         vol.Required("vehicle_id"): str,
-        vol.Required("tire_index"): vol.Coerce(int),
+        vol.Required("tire_index"): vol.All(vol.Coerce(int), vol.Range(min=0)),
     })
     @websocket_api.async_response
     async def ws_delete_tire(hass, connection, msg):
         store = get_store(hass)
-        await store.async_delete_tire(msg["vehicle_id"], msg["tire_index"])
-        connection.send_result(msg["id"], {"vehicle": store.get_vehicle(msg["vehicle_id"])})
+        vid = msg["vehicle_id"]
+        if store.get_vehicle(vid) is None:
+            connection.send_error(msg["id"], "not_found", f"Vehicle {vid} not found")
+            return
+        await store.async_delete_tire(vid, msg["tire_index"])
+        hass.bus.async_fire(EVENT_SERVICE_ENTRY_ADDED, {"vehicle_id": vid})
+        connection.send_result(msg["id"], {"vehicle": store.get_vehicle(vid)})
 
     @websocket_api.websocket_command({
         vol.Required("type"): f"{DOMAIN}/update_service_entry",
         vol.Required("vehicle_id"): str,
-        vol.Required("entry_index"): vol.Coerce(int),
+        vol.Required("entry_index"): vol.All(vol.Coerce(int), vol.Range(min=0)),
         vol.Required("entry_date"): str,
         vol.Required("km"): vol.Coerce(int),
-        vol.Required("services"): list,
+        vol.Required("services"): vol.All(cv.ensure_list, [vol.In(ALL_SERVICE_IDS)]),
         vol.Optional("notes", default=""): str,
     })
     @websocket_api.async_response
@@ -364,7 +399,7 @@ def _register_websocket(hass: HomeAssistant) -> None:
         v = store.get_vehicle(vid)
         if v and msg["km"] > (v.get("km") or 0):
             await store.async_update_km(vid, msg["km"])
-        hass.bus.async_fire(f"{DOMAIN}_service_entry_added", {"vehicle_id": vid})
+        hass.bus.async_fire(EVENT_SERVICE_ENTRY_ADDED, {"vehicle_id": vid})
         connection.send_result(msg["id"], {"vehicle": store.get_vehicle(vid)})
 
     @websocket_api.websocket_command({
@@ -404,20 +439,22 @@ def _register_services(hass: HomeAssistant) -> None:
             km=call.data["km"], services=call.data["services"],
             notes=call.data.get("notes", ""),
         )
-        hass.bus.async_fire(f"{DOMAIN}_service_entry_added", {"vehicle_id": vid})
+        hass.bus.async_fire(EVENT_SERVICE_ENTRY_ADDED, {"vehicle_id": vid})
 
     hass.services.async_register(DOMAIN, HA_SERVICE_ADD_ENTRY, handle_add_entry,
         schema=vol.Schema({
             vol.Required("vehicle_id"): cv.string,
             vol.Required("entry_date"): cv.string,
             vol.Required("km"): vol.Coerce(int),
-            vol.Required("services"): vol.All(cv.ensure_list, [cv.string]),
+            vol.Required("services"): vol.All(cv.ensure_list, [vol.In(ALL_SERVICE_IDS)]),
             vol.Optional("notes", default=""): cv.string,
         }))
 
     async def handle_update_km(call: ServiceCall) -> None:
         store = get_store(hass)
-        await store.async_update_km(call.data["vehicle_id"], call.data["km"])
+        vid = call.data["vehicle_id"]
+        await store.async_update_km(vid, call.data["km"])
+        hass.bus.async_fire(EVENT_KM_UPDATED, {"vehicle_id": vid})
 
     hass.services.async_register(DOMAIN, HA_SERVICE_UPDATE_KM, handle_update_km,
         schema=vol.Schema({
@@ -427,11 +464,13 @@ def _register_services(hass: HomeAssistant) -> None:
 
     async def handle_add_repair(call: ServiceCall) -> None:
         store = get_store(hass)
-        await store.async_add_repair(call.data["vehicle_id"], {
+        vid = call.data["vehicle_id"]
+        await store.async_add_repair(vid, {
             "date": call.data["entry_date"], "km": call.data["km"],
             "cat": call.data["category"], "desc": call.data.get("description", ""),
             "cost": call.data.get("cost", 0),
         })
+        hass.bus.async_fire(EVENT_SERVICE_ENTRY_ADDED, {"vehicle_id": vid})
 
     hass.services.async_register(DOMAIN, HA_SERVICE_ADD_REPAIR, handle_add_repair,
         schema=vol.Schema({
@@ -445,7 +484,17 @@ def _register_services(hass: HomeAssistant) -> None:
 
     async def handle_add_tire(call: ServiceCall) -> None:
         store = get_store(hass)
-        await store.async_add_tire(call.data["vehicle_id"], dict(call.data))
+        vid = call.data["vehicle_id"]
+        await store.async_add_tire(vid, {
+            "date": call.data["entry_date"], "km": call.data["km"],
+            "type": call.data["type"], "axle": call.data["axle"],
+            "width": call.data.get("width"), "ratio": call.data.get("ratio"),
+            "rim": call.data.get("rim"),
+            "brand": call.data.get("brand", ""), "dot": call.data.get("dot", ""),
+            "vl": call.data.get("vl", 0.0), "vr": call.data.get("vr", 0.0),
+            "hl": call.data.get("hl", 0.0), "hr": call.data.get("hr", 0.0),
+        })
+        hass.bus.async_fire(EVENT_SERVICE_ENTRY_ADDED, {"vehicle_id": vid})
 
     hass.services.async_register(DOMAIN, HA_SERVICE_ADD_TIRE, handle_add_tire,
         schema=vol.Schema({

@@ -1,4 +1,94 @@
 {
+  "entity": {
+    "sensor": {
+      "oil": {
+        "name": "Ölwechsel"
+      },
+      "inspection": {
+        "name": "Inspektion"
+      },
+      "brake_fluid": {
+        "name": "Bremsflüssigkeit"
+      },
+      "cabin_filter": {
+        "name": "Innenraumfilter"
+      },
+      "air_filter": {
+        "name": "Luftfilter"
+      },
+      "spark_plugs": {
+        "name": "Zündkerzen"
+      },
+      "fuel_filter": {
+        "name": "Kraftstofffilter"
+      },
+      "gearbox": {
+        "name": "Getriebeöl"
+      },
+      "haldex": {
+        "name": "Haldex-Öl"
+      },
+      "ac": {
+        "name": "Klimawartung"
+      },
+      "hu": {
+        "name": "HU/AU"
+      },
+      "km": {
+        "name": "Kilometerstand"
+      },
+      "tire_vl": {
+        "name": "Reifen VL"
+      },
+      "tire_vr": {
+        "name": "Reifen VR"
+      },
+      "tire_hl": {
+        "name": "Reifen HL"
+      },
+      "tire_hr": {
+        "name": "Reifen HR"
+      }
+    },
+    "binary_sensor": {
+      "oil": {
+        "name": "Ölwechsel fällig"
+      },
+      "inspection": {
+        "name": "Inspektion fällig"
+      },
+      "brake_fluid": {
+        "name": "Bremsflüssigkeit fällig"
+      },
+      "cabin_filter": {
+        "name": "Innenraumfilter fällig"
+      },
+      "air_filter": {
+        "name": "Luftfilter fällig"
+      },
+      "spark_plugs": {
+        "name": "Zündkerzen fällig"
+      },
+      "fuel_filter": {
+        "name": "Kraftstofffilter fällig"
+      },
+      "gearbox": {
+        "name": "Getriebeöl fällig"
+      },
+      "haldex": {
+        "name": "Haldex-Öl fällig"
+      },
+      "ac": {
+        "name": "Klimawartung fällig"
+      },
+      "hu": {
+        "name": "HU/AU fällig"
+      },
+      "any_due": {
+        "name": "Service fällig"
+      }
+    }
+  },
   "config": {
     "step": {
       "user": {
@@ -29,41 +119,41 @@
         "title": "Service-Punkte (2/3)",
         "description": "Wähle die Wartungspunkte aus, die du überwachen möchtest.",
         "data": {
-          "oil":          "Ölwechsel",
-          "inspection":   "Inspektion",
-          "brake_fluid":  "Bremsflüssigkeit",
+          "oil": "Ölwechsel",
+          "inspection": "Inspektion",
+          "brake_fluid": "Bremsflüssigkeit",
           "cabin_filter": "Innenraumfilter",
-          "air_filter":   "Luftfilter",
-          "spark_plugs":  "Zündkerzen (nur Benziner)",
-          "fuel_filter":  "Kraftstofffilter (nur Diesel)",
-          "gearbox":      "Getriebeöl",
-          "haldex":       "Haldex-Öl (nur Allrad)",
-          "ac":           "Klimawartung",
-          "hu":           "Hauptuntersuchung (HU/AU)"
+          "air_filter": "Luftfilter",
+          "spark_plugs": "Zündkerzen (nur Benziner)",
+          "fuel_filter": "Kraftstofffilter (nur Diesel)",
+          "gearbox": "Getriebeöl",
+          "haldex": "Haldex-Öl (nur Allrad)",
+          "ac": "Klimawartung",
+          "hu": "Hauptuntersuchung (HU/AU)"
         }
       },
       "intervals": {
         "title": "Service-Intervalle (3/3)",
-        "description": "{disclaimer}",
+        "description": "Richtwerte – bitte im Serviceheft prüfen. 0 = nicht tracken. Keine Haftung für falsche Werte.",
         "data": {
-          "oil_km":             "Ölwechsel – km-Intervall",
-          "oil_months":         "Ölwechsel – Monate",
-          "inspection_km":      "Inspektion – km-Intervall",
-          "inspection_months":  "Inspektion – Monate",
+          "oil_km": "Ölwechsel – km-Intervall",
+          "oil_months": "Ölwechsel – Monate",
+          "inspection_km": "Inspektion – km-Intervall",
+          "inspection_months": "Inspektion – Monate",
           "brake_fluid_months": "Bremsflüssigkeit – Monate",
-          "cabin_filter_km":    "Innenraumfilter – km-Intervall",
-          "cabin_filter_months":"Innenraumfilter – Monate",
-          "air_filter_km":      "Luftfilter – km-Intervall",
-          "air_filter_months":  "Luftfilter – Monate",
-          "spark_plugs_km":     "Zündkerzen – km-Intervall",
+          "cabin_filter_km": "Innenraumfilter – km-Intervall",
+          "cabin_filter_months": "Innenraumfilter – Monate",
+          "air_filter_km": "Luftfilter – km-Intervall",
+          "air_filter_months": "Luftfilter – Monate",
+          "spark_plugs_km": "Zündkerzen – km-Intervall",
           "spark_plugs_months": "Zündkerzen – Monate",
-          "fuel_filter_km":     "Kraftstofffilter – km-Intervall",
+          "fuel_filter_km": "Kraftstofffilter – km-Intervall",
           "fuel_filter_months": "Kraftstofffilter – Monate",
-          "gearbox_km":         "Getriebeöl – km-Intervall",
-          "haldex_km":          "Haldex-Öl – km-Intervall",
-          "haldex_months":      "Haldex-Öl – Monate",
-          "ac_months":          "Klimawartung – Monate",
-          "hu_months":          "HU/AU – Monate"
+          "gearbox_km": "Getriebeöl – km-Intervall",
+          "haldex_km": "Haldex-Öl – km-Intervall",
+          "haldex_months": "Haldex-Öl – Monate",
+          "ac_months": "Klimawartung – Monate",
+          "hu_months": "HU/AU – Monate"
         }
       }
     },
@@ -97,30 +187,50 @@
           "vin": "Die Fahrgestellnummer besteht aus genau 17 Zeichen."
         }
       },
+      "services": {
+        "title": "Service-Punkte",
+        "description": "Wähle die Wartungspunkte aus, die du überwachen möchtest.",
+        "data": {
+          "oil": "Ölwechsel",
+          "inspection": "Inspektion",
+          "brake_fluid": "Bremsflüssigkeit",
+          "cabin_filter": "Innenraumfilter",
+          "air_filter": "Luftfilter",
+          "spark_plugs": "Zündkerzen (nur Benziner)",
+          "fuel_filter": "Kraftstofffilter (nur Diesel)",
+          "gearbox": "Getriebeöl",
+          "haldex": "Haldex-Öl (nur Allrad)",
+          "ac": "Klimawartung",
+          "hu": "Hauptuntersuchung (HU/AU)"
+        }
+      },
       "intervals": {
         "title": "Service-Intervalle bearbeiten",
-        "description": "{disclaimer}",
+        "description": "0 = nicht tracken. Keine Haftung für falsche Werte.",
         "data": {
-          "oil_km":             "Ölwechsel – km-Intervall",
-          "oil_months":         "Ölwechsel – Monate",
-          "inspection_km":      "Inspektion – km-Intervall",
-          "inspection_months":  "Inspektion – Monate",
+          "oil_km": "Ölwechsel – km-Intervall",
+          "oil_months": "Ölwechsel – Monate",
+          "inspection_km": "Inspektion – km-Intervall",
+          "inspection_months": "Inspektion – Monate",
           "brake_fluid_months": "Bremsflüssigkeit – Monate",
-          "cabin_filter_km":    "Innenraumfilter – km-Intervall",
-          "cabin_filter_months":"Innenraumfilter – Monate",
-          "air_filter_km":      "Luftfilter – km-Intervall",
-          "air_filter_months":  "Luftfilter – Monate",
-          "spark_plugs_km":     "Zündkerzen – km-Intervall",
+          "cabin_filter_km": "Innenraumfilter – km-Intervall",
+          "cabin_filter_months": "Innenraumfilter – Monate",
+          "air_filter_km": "Luftfilter – km-Intervall",
+          "air_filter_months": "Luftfilter – Monate",
+          "spark_plugs_km": "Zündkerzen – km-Intervall",
           "spark_plugs_months": "Zündkerzen – Monate",
-          "fuel_filter_km":     "Kraftstofffilter – km-Intervall",
+          "fuel_filter_km": "Kraftstofffilter – km-Intervall",
           "fuel_filter_months": "Kraftstofffilter – Monate",
-          "gearbox_km":         "Getriebeöl – km-Intervall",
-          "haldex_km":          "Haldex-Öl – km-Intervall",
-          "haldex_months":      "Haldex-Öl – Monate",
-          "ac_months":          "Klimawartung – Monate",
-          "hu_months":          "HU/AU – Monate"
+          "gearbox_km": "Getriebeöl – km-Intervall",
+          "haldex_km": "Haldex-Öl – km-Intervall",
+          "haldex_months": "Haldex-Öl – Monate",
+          "ac_months": "Klimawartung – Monate",
+          "hu_months": "HU/AU – Monate"
         }
       }
+    },
+    "error": {
+      "no_service_selected": "Bitte mindestens einen Service-Punkt auswählen."
     }
   }
 }

@@ -2,25 +2,26 @@
 from __future__ import annotations
 
 import logging
-from datetime import date, timedelta
+from datetime import date
 from typing import Any
 
 from homeassistant.components.sensor import SensorEntity, SensorDeviceClass
+from homeassistant.util import dt as hass_dt
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.event import async_track_time_interval
 
 from .const import (
     DOMAIN,
-    SERVICE_LABELS,
+    SCAN_INTERVAL,
+    EVENT_SERVICE_ENTRY_ADDED, EVENT_KM_UPDATED,
     TIRE_WEAR_PER_KM, TIRE_WARN_SUMMER_MM, TIRE_WARN_WINTER_MM, TIRE_LEGAL_MIN_MM,
 )
 from .store import get_store, VehicleServiceStore
 
 _LOGGER = logging.getLogger(__name__)
-
-SCAN_INTERVAL = timedelta(hours=1)
 
 
 async def async_setup_entry(
@@ -49,25 +50,31 @@ async def async_setup_entry(
 
     async_add_entities(entities, update_before_add=True)
 
-    # Refresh all sensors when data changes via WebSocket
-    async def _on_data_changed(event) -> None:
-        if event.data.get("vehicle_id") == vehicle_id:
-            for entity in entities:
-                entity.async_schedule_update_ha_state(force_refresh=True)
+    # Refresh all sensors when data changes, or on a fixed interval so
+    # time-based services (HU, brake fluid, AC) go overdue while parked.
+    def _refresh_all() -> None:
+        for entity in entities:
+            entity.async_schedule_update_ha_state(force_refresh=True)
 
-    hass.bus.async_listen(f"{DOMAIN}_service_entry_added", _on_data_changed)
-    hass.bus.async_listen(f"{DOMAIN}_km_updated",          _on_data_changed)
+    @callback
+    def _on_data_changed(event) -> None:
+        if event.data.get("vehicle_id") == vehicle_id:
+            _refresh_all()
+
+    entry.async_on_unload(async_track_time_interval(hass, _refresh_all, SCAN_INTERVAL))
+    entry.async_on_unload(hass.bus.async_listen(EVENT_SERVICE_ENTRY_ADDED, _on_data_changed))
+    entry.async_on_unload(hass.bus.async_listen(EVENT_KM_UPDATED, _on_data_changed))
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 def _months_since(iso_date: str) -> float:
-    """Return months elapsed since an ISO date string."""
+    """Return months elapsed since an ISO date string (HA timezone)."""
     try:
         d = date.fromisoformat(iso_date)
     except (ValueError, TypeError):
         return 0.0
-    return (date.today() - d).days / 30.44
+    return (hass_dt.now().date() - d).days / 30.44
 
 
 def _calc_pct(vehicle: dict, svc_id: str) -> tuple[float, float | None, float | None]:
@@ -85,7 +92,8 @@ def _calc_pct(vehicle: dict, svc_id: str) -> tuple[float, float | None, float | 
     if intv.get("km"):
         base_km = last.get("km") or 0
         driven = current_km - base_km
-        km_pct = min(100.0, round(driven / intv["km"] * 100, 1))
+        # Clamp: current km below the base km (odometer swap) must not go negative
+        km_pct = min(100.0, max(0.0, round(driven / intv["km"] * 100, 1)))
         km_left = max(0.0, intv["km"] - driven)
 
     if intv.get("months"):
@@ -122,12 +130,18 @@ def _device_info(store: VehicleServiceStore, vehicle_id: str) -> DeviceInfo:
     vehicle = store.get_vehicle(vehicle_id)
     make = vehicle.get("make", "") if vehicle else ""
     model = vehicle.get("model", "") if vehicle else ""
-    return DeviceInfo(
-        identifiers={(DOMAIN, vehicle_id)},
-        name=f"{make} {model}",
-        manufacturer=make,
-        model=model,
-    )
+    info: dict[str, Any] = {
+        "identifiers": {(DOMAIN, vehicle_id)},
+        "name": f"{make} {model}".strip() or vehicle_id,
+    }
+    if make:
+        info["manufacturer"] = make
+    if model:
+        info["model"] = model
+    vin = (vehicle.get("vin") or "").strip() if vehicle else ""
+    if vin:
+        info["serial_number"] = vin
+    return DeviceInfo(**info)
 
 
 # ── Service status sensor ─────────────────────────────────────────────────────
@@ -150,7 +164,7 @@ class ServiceStatusSensor(SensorEntity):
         self._vehicle_id = vehicle_id
         self._svc_id = svc_id
         self._attr_unique_id = f"{vehicle_id}_{svc_id}_status"
-        self._attr_name = SERVICE_LABELS.get(svc_id, svc_id)
+        self._attr_translation_key = svc_id
         self._attr_native_value: str = "ok"
         self._extra: dict[str, Any] = {}
 
@@ -209,7 +223,7 @@ class KmSensor(SensorEntity):
         self._store = store
         self._vehicle_id = vehicle_id
         self._attr_unique_id = f"{vehicle_id}_km"
-        self._attr_name = "Kilometerstand"
+        self._attr_translation_key = "km"
 
     @property
     def device_info(self) -> DeviceInfo:
@@ -230,13 +244,6 @@ class TireDepthSensor(SensorEntity):
     _attr_native_unit_of_measurement = "mm"
     _attr_icon = "mdi:tire"
 
-    POS_LABELS = {
-        "vl": "Reifen VL",
-        "vr": "Reifen VR",
-        "hl": "Reifen HL",
-        "hr": "Reifen HR",
-    }
-
     def __init__(
         self,
         hass: HomeAssistant,
@@ -249,7 +256,7 @@ class TireDepthSensor(SensorEntity):
         self._vehicle_id = vehicle_id
         self._position = position
         self._attr_unique_id = f"{vehicle_id}_tire_{position}"
-        self._attr_name = self.POS_LABELS.get(position, position.upper())
+        self._attr_translation_key = f"tire_{position}"
         self._extra: dict[str, Any] = {}
 
     @property
@@ -270,11 +277,18 @@ class TireDepthSensor(SensorEntity):
             self._attr_native_value = None
             return
 
-        latest = tires[-1]
-        orig = float(latest.get(self._position) or 0)
-        if not orig:
+        # Latest entry that has a value for THIS position — an axle-only set
+        # (e.g. rear tires swapped) must not shadow the previous full set
+        latest: dict[str, Any] | None = None
+        for tire in reversed(tires):
+            if float(tire.get(self._position) or 0) > 0:
+                latest = tire
+                break
+        if latest is None:
             self._attr_native_value = None
             return
+
+        orig = float(latest.get(self._position) or 0)
 
         mounted_km = int(latest.get("km") or 0)
         current_km = vehicle.get("km", 0)

@@ -1,4 +1,5 @@
 """Constants for Vehicle Service Manager."""
+from datetime import timedelta
 
 DOMAIN = "vehicle_service"
 PLATFORMS = ["sensor", "binary_sensor"]
@@ -48,20 +49,6 @@ ALL_SERVICE_IDS = [
     SERVICE_HU,
 ]
 
-SERVICE_LABELS = {
-    SERVICE_OIL: "Ölwechsel",
-    SERVICE_INSPECTION: "Inspektion",
-    SERVICE_BRAKE_FLUID: "Bremsflüssigkeit",
-    SERVICE_CABIN_FILTER: "Innenraumfilter",
-    SERVICE_AIR_FILTER: "Luftfilter",
-    SERVICE_SPARK_PLUGS: "Zündkerzen",
-    SERVICE_FUEL_FILTER: "Kraftstofffilter",
-    SERVICE_GEARBOX: "Getriebeöl",
-    SERVICE_HALDEX: "Haldex-Öl",
-    SERVICE_AC: "Klimawartung",
-    SERVICE_HU: "Hauptuntersuchung (HU/AU)",
-}
-
 # Interval type: "km", "time", "both"
 SERVICE_INTERVAL_TYPE = {
     SERVICE_OIL: "both",
@@ -99,8 +86,11 @@ HA_SERVICE_ADD_REPAIR = "add_repair"
 HA_SERVICE_ADD_TIRE = "add_tire"
 
 # Events
-EVENT_SERVICE_DUE = f"{DOMAIN}_service_due"
+EVENT_SERVICE_ENTRY_ADDED = f"{DOMAIN}_service_entry_added"
 EVENT_KM_UPDATED = f"{DOMAIN}_km_updated"
+
+# Periodic sensor refresh (time-based due dates tick down while the car is parked)
+SCAN_INTERVAL = timedelta(hours=1)
 
 # Tire wear: 1.5 mm per 10,000 km
 TIRE_WEAR_PER_KM = 1.5 / 10000

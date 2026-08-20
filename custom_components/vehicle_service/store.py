@@ -36,7 +36,17 @@ class VehicleServiceStore:
     async def async_load(self) -> None:
         if self._loaded:
             return
-        stored = await self._store.async_load()
+        try:
+            stored = await self._store.async_load()
+        except Exception as e:  # corrupt .storage file
+            # Never mark as loaded and never save over it — refuse to run with
+            # an empty store, or the next save would wipe the user's data.
+            _LOGGER.critical(
+                "Could not load vehicle service store (%s). Refusing to start "
+                "with an empty store to avoid overwriting %s.",
+                e, STORAGE_KEY,
+            )
+            raise
         if stored:
             self._data = stored
         else:
@@ -118,7 +128,7 @@ class VehicleServiceStore:
         if vehicle is None:
             raise KeyError(f"Vehicle {vehicle_id} not found")
         history = vehicle.get("history", [])
-        if entry_index >= len(history):
+        if not (0 <= entry_index < len(history)):
             raise IndexError("Entry index out of range")
         history[entry_index] = {
             "date": entry_date, "km": km, "services": services, "notes": notes,
@@ -132,7 +142,7 @@ class VehicleServiceStore:
         if vehicle is None:
             raise KeyError(f"Vehicle {vehicle_id} not found")
         history = vehicle.get("history", [])
-        if entry_index < len(history):
+        if 0 <= entry_index < len(history):
             history.pop(entry_index)
         self._recalc_last_service(vehicle)
         await self.async_save()
@@ -167,7 +177,7 @@ class VehicleServiceStore:
         if vehicle is None:
             return
         repairs = vehicle.get("repairs", [])
-        if repair_index < len(repairs):
+        if 0 <= repair_index < len(repairs):
             repairs.pop(repair_index)
         await self.async_save()
 
@@ -189,6 +199,6 @@ class VehicleServiceStore:
         if vehicle is None:
             return
         tires = vehicle.get("tires", [])
-        if tire_index < len(tires):
+        if 0 <= tire_index < len(tires):
             tires.pop(tire_index)
         await self.async_save()

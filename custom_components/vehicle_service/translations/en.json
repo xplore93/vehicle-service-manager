@@ -1,126 +1,236 @@
 {
+  "entity": {
+    "sensor": {
+      "oil": {
+        "name": "Oil change"
+      },
+      "inspection": {
+        "name": "Inspection"
+      },
+      "brake_fluid": {
+        "name": "Brake fluid"
+      },
+      "cabin_filter": {
+        "name": "Cabin filter"
+      },
+      "air_filter": {
+        "name": "Air filter"
+      },
+      "spark_plugs": {
+        "name": "Spark plugs"
+      },
+      "fuel_filter": {
+        "name": "Fuel filter"
+      },
+      "gearbox": {
+        "name": "Gearbox oil"
+      },
+      "haldex": {
+        "name": "Haldex oil"
+      },
+      "ac": {
+        "name": "AC service"
+      },
+      "hu": {
+        "name": "HU/AU"
+      },
+      "km": {
+        "name": "Mileage"
+      },
+      "tire_vl": {
+        "name": "Tire front left"
+      },
+      "tire_vr": {
+        "name": "Tire front right"
+      },
+      "tire_hl": {
+        "name": "Tire rear left"
+      },
+      "tire_hr": {
+        "name": "Tire rear right"
+      }
+    },
+    "binary_sensor": {
+      "oil": {
+        "name": "Oil change due"
+      },
+      "inspection": {
+        "name": "Inspection due"
+      },
+      "brake_fluid": {
+        "name": "Brake fluid due"
+      },
+      "cabin_filter": {
+        "name": "Cabin filter due"
+      },
+      "air_filter": {
+        "name": "Air filter due"
+      },
+      "spark_plugs": {
+        "name": "Spark plugs due"
+      },
+      "fuel_filter": {
+        "name": "Fuel filter due"
+      },
+      "gearbox": {
+        "name": "Gearbox oil due"
+      },
+      "haldex": {
+        "name": "Haldex oil due"
+      },
+      "ac": {
+        "name": "AC service due"
+      },
+      "hu": {
+        "name": "HU/AU due"
+      },
+      "any_due": {
+        "name": "Service due"
+      }
+    }
+  },
   "config": {
     "step": {
       "user": {
-        "title": "Fahrzeugdaten (1/3)",
-        "description": "Grundlegende Fahrzeugdaten eingeben. Die Erstzulassung wird als Ausgangspunkt für Zeit-Intervalle genutzt, solange kein Serviceeintrag vorhanden ist.",
+        "title": "Vehicle data (1/3)",
+        "description": "Enter the basic vehicle details. The first registration is used as the starting point for time-based intervals until a service entry exists.",
         "data": {
-          "make": "Hersteller",
-          "model": "Modell",
-          "ez_month": "Monat der Erstzulassung",
-          "ez_year": "Jahr der Erstzulassung",
-          "km": "Aktueller Kilometerstand",
-          "plate": "Kennzeichen",
-          "hu_known": "Datum der letzten HU/AU bekannt?",
-          "hu_month": "Monat (letzte HU/AU)",
-          "hu_year": "Jahr (letzte HU/AU)",
-          "hu_km": "Kilometerstand bei letzter HU/AU",
-          "vin": "Fahrgestellnummer VIN (optional, 17 Zeichen)",
-          "hsn": "Schlüsselnummer HSN/TSN (optional)",
-          "entity_km": "Live KM-Stand Entität (optional)"
+          "make": "Maker",
+          "model": "Model",
+          "ez_month": "First registration month",
+          "ez_year": "First registration year",
+          "km": "Current mileage (km)",
+          "plate": "License plate",
+          "hu_known": "Date of the last HU/AU known?",
+          "hu_month": "Month (last HU/AU)",
+          "hu_year": "Year (last HU/AU)",
+          "hu_km": "Mileage at last HU/AU",
+          "vin": "VIN (optional, 17 characters)",
+          "hsn": "HSN/TSN key number (optional)",
+          "entity_km": "Live mileage entity (optional)"
         },
         "data_description": {
-          "entity_km": "Sensor-Entität die den aktuellen Kilometerstand liefert (z.B. OBD-Dongle).",
-          "hu_known": "Falls bekannt, wird automatisch ein Service-Eintrag für die HU/AU angelegt.",
-          "vin": "Die Fahrgestellnummer besteht aus genau 17 Zeichen."
+          "entity_km": "A sensor entity that provides the current mileage (e.g. an OBD dongle).",
+          "hu_known": "If known, a service entry for the HU/AU is created automatically.",
+          "vin": "The VIN consists of exactly 17 characters."
         }
       },
       "services": {
-        "title": "Service-Punkte (2/3)",
-        "description": "Wähle die Wartungspunkte aus, die du überwachen möchtest.",
+        "title": "Service points (2/3)",
+        "description": "Select the maintenance points you want to track.",
         "data": {
-          "oil":          "Ölwechsel",
-          "inspection":   "Inspektion",
-          "brake_fluid":  "Bremsflüssigkeit",
-          "cabin_filter": "Innenraumfilter",
-          "air_filter":   "Luftfilter",
-          "spark_plugs":  "Zündkerzen (nur Benziner)",
-          "fuel_filter":  "Kraftstofffilter (nur Diesel)",
-          "gearbox":      "Getriebeöl",
-          "haldex":       "Haldex-Öl (nur Allrad)",
-          "ac":           "Klimawartung",
-          "hu":           "Hauptuntersuchung (HU/AU)"
+          "oil": "Oil change",
+          "inspection": "Inspection",
+          "brake_fluid": "Brake fluid",
+          "cabin_filter": "Cabin filter",
+          "air_filter": "Air filter",
+          "spark_plugs": "Spark plugs (petrol only)",
+          "fuel_filter": "Fuel filter (diesel only)",
+          "gearbox": "Gearbox oil",
+          "haldex": "Haldex oil (AWD only)",
+          "ac": "Air conditioning service",
+          "hu": "Periodic inspection (HU/AU)"
         }
       },
       "intervals": {
-        "title": "Service-Intervalle (3/3)",
-        "description": "{disclaimer}",
+        "title": "Service intervals (3/3)",
+        "description": "Values are guidelines — please check the service manual. 0 = not tracked. No liability for incorrect values.",
         "data": {
-          "oil_km":             "Ölwechsel – km-Intervall",
-          "oil_months":         "Ölwechsel – Monate",
-          "inspection_km":      "Inspektion – km-Intervall",
-          "inspection_months":  "Inspektion – Monate",
-          "brake_fluid_months": "Bremsflüssigkeit – Monate",
-          "cabin_filter_km":    "Innenraumfilter – km-Intervall",
-          "cabin_filter_months":"Innenraumfilter – Monate",
-          "air_filter_km":      "Luftfilter – km-Intervall",
-          "air_filter_months":  "Luftfilter – Monate",
-          "spark_plugs_km":     "Zündkerzen – km-Intervall",
-          "spark_plugs_months": "Zündkerzen – Monate",
-          "fuel_filter_km":     "Kraftstofffilter – km-Intervall",
-          "fuel_filter_months": "Kraftstofffilter – Monate",
-          "gearbox_km":         "Getriebeöl – km-Intervall",
-          "haldex_km":          "Haldex-Öl – km-Intervall",
-          "haldex_months":      "Haldex-Öl – Monate",
-          "ac_months":          "Klimawartung – Monate",
-          "hu_months":          "HU/AU – Monate"
+          "oil_km": "Oil change – km interval",
+          "oil_months": "Oil change – months",
+          "inspection_km": "Inspection – km interval",
+          "inspection_months": "Inspection – months",
+          "brake_fluid_months": "Brake fluid – months",
+          "cabin_filter_km": "Cabin filter – km interval",
+          "cabin_filter_months": "Cabin filter – months",
+          "air_filter_km": "Air filter – km interval",
+          "air_filter_months": "Air filter – months",
+          "spark_plugs_km": "Spark plugs – km interval",
+          "spark_plugs_months": "Spark plugs – months",
+          "fuel_filter_km": "Fuel filter – km interval",
+          "fuel_filter_months": "Fuel filter – months",
+          "gearbox_km": "Gearbox oil – km interval",
+          "haldex_km": "Haldex oil – km interval",
+          "haldex_months": "Haldex oil – months",
+          "ac_months": "AC service – months",
+          "hu_months": "HU/AU – months"
         }
       }
     },
     "error": {
-      "invalid_date": "Ungültiges Datum.",
-      "no_service_selected": "Bitte mindestens einen Service-Punkt auswählen.",
-      "vin_length": "Die Fahrgestellnummer muss genau 17 Zeichen lang sein."
+      "invalid_date": "Invalid date.",
+      "no_service_selected": "Select at least one service point.",
+      "vin_length": "The VIN must be exactly 17 characters long."
     },
     "abort": {
-      "already_configured": "Dieses Fahrzeug ist bereits konfiguriert."
+      "already_configured": "This vehicle is already configured."
     }
   },
   "options": {
     "step": {
       "init": {
-        "title": "Fahrzeugdaten bearbeiten",
-        "description": "Alle Fahrzeugdaten können hier geändert werden.",
+        "title": "Edit vehicle data",
+        "description": "All vehicle data can be changed here.",
         "data": {
-          "make": "Hersteller",
-          "model": "Modell",
-          "ez_month": "Monat der Erstzulassung",
-          "ez_year": "Jahr der Erstzulassung",
-          "km": "Aktueller Kilometerstand",
-          "plate": "Kennzeichen",
-          "vin": "Fahrgestellnummer VIN (17 Zeichen)",
-          "hsn": "Schlüsselnummer HSN/TSN",
-          "entity_km": "Live KM-Stand Entität"
+          "make": "Maker",
+          "model": "Model",
+          "ez_month": "First registration month",
+          "ez_year": "First registration year",
+          "km": "Current mileage (km)",
+          "plate": "License plate",
+          "vin": "VIN (17 characters)",
+          "hsn": "HSN/TSN key number",
+          "entity_km": "Live mileage entity"
         },
         "data_description": {
-          "entity_km": "Nach dem Speichern wird die Integration neu geladen.",
-          "vin": "Die Fahrgestellnummer besteht aus genau 17 Zeichen."
+          "entity_km": "The integration is reloaded after saving.",
+          "vin": "The VIN consists of exactly 17 characters."
+        }
+      },
+      "services": {
+        "title": "Service points",
+        "description": "Select the maintenance points you want to track.",
+        "data": {
+          "oil": "Oil change",
+          "inspection": "Inspection",
+          "brake_fluid": "Brake fluid",
+          "cabin_filter": "Cabin filter",
+          "air_filter": "Air filter",
+          "spark_plugs": "Spark plugs (petrol only)",
+          "fuel_filter": "Fuel filter (diesel only)",
+          "gearbox": "Gearbox oil",
+          "haldex": "Haldex oil (AWD only)",
+          "ac": "Air conditioning service",
+          "hu": "Periodic inspection (HU/AU)"
         }
       },
       "intervals": {
-        "title": "Service-Intervalle bearbeiten",
-        "description": "{disclaimer}",
+        "title": "Edit service intervals",
+        "description": "0 = not tracked. No liability for incorrect values.",
         "data": {
-          "oil_km":             "Ölwechsel – km-Intervall",
-          "oil_months":         "Ölwechsel – Monate",
-          "inspection_km":      "Inspektion – km-Intervall",
-          "inspection_months":  "Inspektion – Monate",
-          "brake_fluid_months": "Bremsflüssigkeit – Monate",
-          "cabin_filter_km":    "Innenraumfilter – km-Intervall",
-          "cabin_filter_months":"Innenraumfilter – Monate",
-          "air_filter_km":      "Luftfilter – km-Intervall",
-          "air_filter_months":  "Luftfilter – Monate",
-          "spark_plugs_km":     "Zündkerzen – km-Intervall",
-          "spark_plugs_months": "Zündkerzen – Monate",
-          "fuel_filter_km":     "Kraftstofffilter – km-Intervall",
-          "fuel_filter_months": "Kraftstofffilter – Monate",
-          "gearbox_km":         "Getriebeöl – km-Intervall",
-          "haldex_km":          "Haldex-Öl – km-Intervall",
-          "haldex_months":      "Haldex-Öl – Monate",
-          "ac_months":          "Klimawartung – Monate",
-          "hu_months":          "HU/AU – Monate"
+          "oil_km": "Oil change – km interval",
+          "oil_months": "Oil change – months",
+          "inspection_km": "Inspection – km interval",
+          "inspection_months": "Inspection – months",
+          "brake_fluid_months": "Brake fluid – months",
+          "cabin_filter_km": "Cabin filter – km interval",
+          "cabin_filter_months": "Cabin filter – months",
+          "air_filter_km": "Air filter – km interval",
+          "air_filter_months": "Air filter – months",
+          "spark_plugs_km": "Spark plugs – km interval",
+          "spark_plugs_months": "Spark plugs – months",
+          "fuel_filter_km": "Fuel filter – km interval",
+          "fuel_filter_months": "Fuel filter – months",
+          "gearbox_km": "Gearbox oil – km interval",
+          "haldex_km": "Haldex oil – km interval",
+          "haldex_months": "Haldex oil – months",
+          "ac_months": "AC service – months",
+          "hu_months": "HU/AU – months"
         }
       }
+    },
+    "error": {
+      "no_service_selected": "Select at least one service point."
     }
   }
 }

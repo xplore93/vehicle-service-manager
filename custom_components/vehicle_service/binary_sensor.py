@@ -9,11 +9,12 @@ from homeassistant.components.binary_sensor import (
     BinarySensorEntity,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.event import async_track_time_interval
 
-from .const import DOMAIN, SERVICE_LABELS
+from .const import DOMAIN, SCAN_INTERVAL, EVENT_SERVICE_ENTRY_ADDED, EVENT_KM_UPDATED
 from .sensor import _calc_pct, _status_from_pct, _device_info
 from .store import get_store, VehicleServiceStore
 
@@ -43,6 +44,21 @@ async def async_setup_entry(
 
     async_add_entities(entities, update_before_add=True)
 
+    # Refresh when data changes, or on a fixed interval so time-based
+    # services (HU, brake fluid, AC) go overdue while parked.
+    def _refresh_all() -> None:
+        for entity in entities:
+            entity.async_schedule_update_ha_state(force_refresh=True)
+
+    @callback
+    def _on_data_changed(event) -> None:
+        if event.data.get("vehicle_id") == vehicle_id:
+            _refresh_all()
+
+    entry.async_on_unload(async_track_time_interval(hass, _refresh_all, SCAN_INTERVAL))
+    entry.async_on_unload(hass.bus.async_listen(EVENT_SERVICE_ENTRY_ADDED, _on_data_changed))
+    entry.async_on_unload(hass.bus.async_listen(EVENT_KM_UPDATED, _on_data_changed))
+
 
 class ServiceDueSensor(BinarySensorEntity):
     """True when a service point is at ≥ 90% (due or overdue)."""
@@ -60,7 +76,7 @@ class ServiceDueSensor(BinarySensorEntity):
         self._vehicle_id = vehicle_id
         self._svc_id = svc_id
         self._attr_unique_id = f"{vehicle_id}_{svc_id}_due"
-        self._attr_name = f"{SERVICE_LABELS.get(svc_id, svc_id)} fällig"
+        self._attr_translation_key = svc_id
         self._extra: dict[str, Any] = {}
 
     @property
@@ -104,7 +120,7 @@ class AnyServiceDueSensor(BinarySensorEntity):
         self._store = store
         self._vehicle_id = vehicle_id
         self._attr_unique_id = f"{vehicle_id}_any_due"
-        self._attr_name = "Service fällig"
+        self._attr_translation_key = "any_due"
         self._extra: dict[str, Any] = {}
 
     @property

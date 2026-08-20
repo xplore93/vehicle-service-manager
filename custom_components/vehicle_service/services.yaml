@@ -1,24 +1,24 @@
 add_service_entry:
-  name: Service-Eintrag hinzufügen
+  name: Add service entry
   description: >
-    Fügt einen Service-Eintrag zur Historie eines Fahrzeugs hinzu und aktualisiert
-    den Zeitpunkt des letzten Services für die angegebenen Service-Punkte.
+    Adds a service entry to the vehicle history and updates the last service
+    date for the given service points.
   fields:
     vehicle_id:
-      name: Fahrzeug-ID
-      description: Die interne UUID des Fahrzeugs (aus den Entity-Attributen).
+      name: Vehicle ID
+      description: The internal UUID of the vehicle (from the entity attributes).
       required: true
       selector:
         text:
     entry_date:
-      name: Datum
-      description: Datum des Services (Format YYYY-MM-DD).
+      name: Date
+      description: Date of the service (format YYYY-MM-DD).
       required: true
       selector:
         date:
     km:
-      name: Kilometerstand
-      description: Kilometerstand bei Durchführung des Services.
+      name: Mileage
+      description: Mileage at the time of the service.
       required: true
       selector:
         number:
@@ -26,8 +26,8 @@ add_service_entry:
           max: 9999999
           unit_of_measurement: km
     services:
-      name: Service-Punkte
-      description: Liste der durchgeführten Service-Punkte (z.B. ["oil", "inspection"]).
+      name: Service points
+      description: List of performed service points (e.g. ["oil", "inspection"]).
       required: true
       selector:
         select:
@@ -45,27 +45,27 @@ add_service_entry:
             - ac
             - hu
     notes:
-      name: Notizen
-      description: Optionale Notizen zum Service (z.B. Werkstattname).
+      name: Notes
+      description: Optional notes about the service (e.g. workshop name).
       required: false
       selector:
         text:
 
 update_km:
-  name: Kilometerstand aktualisieren
+  name: Update mileage
   description: >
-    Aktualisiert den Kilometerstand eines Fahrzeugs manuell.
-    (Bei konfigurierter KM-Entität wird der Stand automatisch übernommen.)
+    Manually updates the mileage of a vehicle.
+    (If a KM entity is configured, the value is taken from it automatically.)
   fields:
     vehicle_id:
-      name: Fahrzeug-ID
-      description: Die interne UUID des Fahrzeugs.
+      name: Vehicle ID
+      description: The internal UUID of the vehicle.
       required: true
       selector:
         text:
     km:
-      name: Kilometerstand
-      description: Neuer Kilometerstand.
+      name: Mileage
+      description: New mileage.
       required: true
       selector:
         number:
@@ -74,21 +74,21 @@ update_km:
           unit_of_measurement: km
 
 add_repair:
-  name: Reparatur hinzufügen
-  description: Fügt einen Reparatur- oder Verschleißeintrag hinzu.
+  name: Add repair
+  description: Adds a repair or wear entry.
   fields:
     vehicle_id:
-      name: Fahrzeug-ID
+      name: Vehicle ID
       required: true
       selector:
         text:
     entry_date:
-      name: Datum
+      name: Date
       required: true
       selector:
         date:
     km:
-      name: Kilometerstand
+      name: Mileage
       required: true
       selector:
         number:
@@ -96,7 +96,7 @@ add_repair:
           max: 9999999
           unit_of_measurement: km
     category:
-      name: Kategorie
+      name: Category
       required: true
       selector:
         select:
@@ -113,12 +113,12 @@ add_repair:
             - clutch
             - other
     description:
-      name: Beschreibung
+      name: Description
       required: false
       selector:
         text:
     cost:
-      name: Kosten (€)
+      name: Cost (€)
       required: false
       selector:
         number:
@@ -127,21 +127,21 @@ add_repair:
           unit_of_measurement: "€"
 
 add_tire:
-  name: Reifen eintragen
-  description: Trägt einen neuen Reifensatz ein.
+  name: Add tire set
+  description: Records a new tire set.
   fields:
     vehicle_id:
-      name: Fahrzeug-ID
+      name: Vehicle ID
       required: true
       selector:
         text:
     entry_date:
-      name: Datum (Aufziehen)
+      name: Date (mounted)
       required: true
       selector:
         date:
     km:
-      name: Kilometerstand beim Aufziehen
+      name: Mileage when mounted
       required: true
       selector:
         number:
@@ -149,7 +149,7 @@ add_tire:
           max: 9999999
           unit_of_measurement: km
     type:
-      name: Reifentyp
+      name: Tire type
       required: true
       selector:
         select:
@@ -158,7 +158,7 @@ add_tire:
             - winter
             - allseason
     axle:
-      name: Achse
+      name: Axle
       required: true
       selector:
         select:
@@ -167,17 +167,17 @@ add_tire:
             - front
             - rear
     brand:
-      name: Marke / Hersteller
+      name: Brand / manufacturer
       required: false
       selector:
         text:
     dot:
-      name: DOT-Code (4 Ziffern)
+      name: DOT code (4 digits)
       required: false
       selector:
         text:
     vl:
-      name: Profiltiefe VL (mm)
+      name: Tread depth front left (mm)
       required: false
       selector:
         number:
@@ -185,7 +185,7 @@ add_tire:
           max: 12
           step: 0.5
     vr:
-      name: Profiltiefe VR (mm)
+      name: Tread depth front right (mm)
       required: false
       selector:
         number:
@@ -193,7 +193,7 @@ add_tire:
           max: 12
           step: 0.5
     hl:
-      name: Profiltiefe HL (mm)
+      name: Tread depth rear left (mm)
       required: false
       selector:
         number:
@@ -201,7 +201,7 @@ add_tire:
           max: 12
           step: 0.5
     hr:
-      name: Profiltiefe HR (mm)
+      name: Tread depth rear right (mm)
       required: false
       selector:
         number:
