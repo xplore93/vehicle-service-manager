@@ -256,30 +256,6 @@ def async_register_websocket(hass: HomeAssistant) -> None:
         _LOGGER.info("Vehicle %s deleted via WebSocket", vid)
         connection.send_result(msg["id"], {"success": True, "deleted_id": vid})
 
-    @websocket_api.websocket_command({
-        vol.Required("type"): f"{DOMAIN}/get_export_data",
-        vol.Required("vehicle_id"): str,
-    })
-    @websocket_api.async_response
-    async def ws_get_export_data(hass, connection, msg):
-        coordinator = VehicleServiceCoordinator(hass)
-        await coordinator.async_load()
-        vid = msg["vehicle_id"]
-        v = coordinator.get_vehicle(vid)
-        if v is None:
-            connection.send_error(msg["id"], "not_found", f"Vehicle {vid} not found")
-            return
-        
-        # Prepare data for CSV export
-        history = v.get("history", [])
-        repairs = v.get("repairs", [])
-        
-        connection.send_result(msg["id"], {
-            "history": history,
-            "repairs": repairs,
-            "vehicle_name": f"{v.get('make', '')} {v.get('model', '')}".strip() or vid
-        })
-
     for fn in [
         ws_get_vehicles,
         ws_version,
@@ -292,6 +268,5 @@ def async_register_websocket(hass: HomeAssistant) -> None:
         ws_delete_vehicle,
         ws_delete_tire,
         ws_update_service_entry,
-        ws_get_export_data,
     ]:
         websocket_api.async_register_command(hass, fn)

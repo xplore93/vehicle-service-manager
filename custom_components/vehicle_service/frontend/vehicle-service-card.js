@@ -81,72 +81,6 @@ function logoHtml(make, size = 20) {
 
 // ── i18n & Localization ────────────────────────────────────────────────────────
 const I18N = {
-  de: {
-    subtitle: "Service-Status, Reparaturen und Reifentracking",
-    errorPrefix: "Fehler: ",
-    error: "Fehler",
-    noVehicles: "Keine Fahrzeuge.",
-    noVehiclesHint: "Einstellungen → Integrationen → + → Vehicle Service Manager",
-    ok: "OK",
-    tabStatus: "Service Status",
-    tabHistory: "Service Historie",
-    tabRepairs: "Reparaturen",
-    tabTires: "Reifen",
-    loading: "Lade…",
-    regDate: "EZ",
-    liveKm: "Live KM",
-    updateKm: "KM aktualisieren",
-    odometer: "Kilometerstand",
-    soon: "Bald",
-    due: "Fällig",
-    noServices: "Keine Service-Punkte konfiguriert.",
-    noEntry: "Kein Eintrag",
-    overdue: "Überfällig",
-    dueSoon: "Fällig bald",
-    inSight: "Im Blick",
-    kmOverdue: "km überfällig",
-    timeExpired: "Zeit abgelaufen",
-    months: "Mon.",
-    entries: "Einträge",
-    addEntry: "+ Eintrag",
-    noEntries: "Noch keine Einträge.",
-    repairs: "Reparaturen",
-    addRepair: "+ Hinzufügen",
-    noRepairs: "Noch keine Reparaturen.",
-    noTires: "Noch keine Reifen eingetragen.",
-    critical: "Kritisch!",
-    criticalShort: "Kritisch",
-    borderline: "Grenzwertig",
-    borderlineShort: "Grenzwertig",
-    wearNote: "Verschleiß: 1,5 mm / 10.000 km · Empf. Grenze: {wm} mm · Min.: 1,6 mm",
-    currentlyMounted: "Aktuell montiert",
-    addTire: "+ Reifen eintragen",
-    tireHistory: "Reifenhistorie",
-    serviceEntry: "Service-Eintrag",
-    km: "KM",
-    work: "Arbeiten",
-    notes: "Notizen",
-    workshopPh: "Werkstatt...",
-    save: "Speichern",
-    repair: "Reparatur",
-    category: "Kategorie",
-    description: "Beschreibung",
-    repairPh: "z.B. Bremsbeläge",
-    cost: "Kosten €",
-    enterTires: "Reifen eintragen",
-    type: "Typ",
-    axle: "Achse",
-    size: "Größe",
-    brand: "Marke",
-    treadDepth: "Profiltiefe",
-    editEntry: "Eintrag bearbeiten",
-    update: "Aktualisieren",
-    confirmDeleteEntry: "Eintrag löschen?",
-    confirmDelete: "Löschen?",
-    enterDate: "Bitte Datum eingeben.",
-    selectService: "Bitte einen Service-Punkt wählen.",
-    week: "KW",
-  },
   en: {
     subtitle: "Service status, repairs and tire tracking",
     errorPrefix: "Error: ",
@@ -228,8 +162,6 @@ function t(hass, key) {
     ? dict[key]
     : I18N.en[key] != null
     ? I18N.en[key]
-    : I18N.de[key] != null
-    ? I18N.de[key]
     : key;
 }
 
@@ -238,12 +170,11 @@ function _loc(hass) {
 }
 
 const SVC_LABELS = {
-  de: { oil: "Ölwechsel", inspection: "Inspektion", brake_fluid: "Bremsflüssigkeit", cabin_filter: "Innenraumfilter", air_filter: "Luftfilter", spark_plugs: "Zündkerzen", fuel_filter: "Kraftstofffilter", gearbox: "Getriebeöl", haldex: "Haldex-Öl", ac: "Klimawartung", hu: "Hauptuntersuchung (HU/AU)" },
   en: { oil: "Oil change", inspection: "Inspection", brake_fluid: "Brake fluid", cabin_filter: "Cabin filter", air_filter: "Air filter", spark_plugs: "Spark plugs", fuel_filter: "Fuel filter", gearbox: "Gearbox oil", haldex: "Haldex oil", ac: "A/C service", hu: "MOT (HU/AU)" },
 };
 
 function svcLabel(hass, sid) {
-  const labels = SVC_LABELS[_lang(hass)] || SVC_LABELS.de;
+  const labels = SVC_LABELS[_lang(hass)] || SVC_LABELS.en;
   return labels[sid] || sid;
 }
 
@@ -255,11 +186,6 @@ const SVC_ICONS = {
 };
 
 const REP_LABELS = {
-  de: {
-    brakes_front: "Bremse vorne", brakes_rear: "Bremse hinten", brakes_full: "Bremsen komplett",
-    discs_front: "Bremsscheiben vorne", discs_rear: "Bremsscheiben hinten", shock_front: "Stoßdämpfer vorne",
-    shock_rear: "Stoßdämpfer hinten", timing_belt: "Zahnriemen", battery: "Batterie", clutch: "Kupplung", other: "Sonstiges",
-  },
   en: {
     brakes_front: "Front brakes", brakes_rear: "Rear brakes", brakes_full: "Full brake service",
     discs_front: "Front discs", discs_rear: "Rear discs", shock_front: "Front shocks",
@@ -268,34 +194,31 @@ const REP_LABELS = {
 };
 
 function repLabel(hass, cat) {
-  const labels = REP_LABELS[_lang(hass)] || REP_LABELS.de;
+  const labels = REP_LABELS[_lang(hass)] || REP_LABELS.en;
   return labels[cat] || cat;
 }
 
 const TIRE_TYPES = {
-  de: { summer: "Sommerreifen", winter: "Winterreifen", allseason: "Ganzjahresreifen" },
   en: { summer: "Summer", winter: "Winter", allseason: "All-season" },
 };
 function tireTypeLabel(hass, tt) {
-  const labels = TIRE_TYPES[_lang(hass)] || TIRE_TYPES.de;
+  const labels = TIRE_TYPES[_lang(hass)] || TIRE_TYPES.en;
   return labels[tt] || tt;
 }
 
 const AXLES = {
-  de: { all: "Alle vier", front: "VA", rear: "HA" },
   en: { all: "All four", front: "Front", rear: "Rear" },
 };
 function axleLabel(hass, ax) {
-  const labels = AXLES[_lang(hass)] || AXLES.de;
+  const labels = AXLES[_lang(hass)] || AXLES.en;
   return labels[ax] || ax;
 }
 
 const WHEEL_POS = {
-  de: ["VL", "VR", "HL", "HR"],
   en: ["FL", "FR", "RL", "RR"],
 };
 function wheelPos(hass) {
-  return WHEEL_POS[_lang(hass)] || WHEEL_POS.de;
+  return WHEEL_POS[_lang(hass)] || WHEEL_POS.en;
 }
 
 const TIRE_WARN = { summer: 3.0, winter: 4.0, allseason: 4.0 };
@@ -479,7 +402,7 @@ class VehicleServiceCard extends HTMLElement {
   }
 
   _showSvcModal(){const v=this._v();const h=this._hass;const svcs=(v.services||[]).map(sid=>`<label class="cblabel"><input type="checkbox" class="svc-cb" value="${sid}"> ${svcLabel(h,sid)}</label>`).join("");this._modal=`<div class="overlay" id="modal"><div class="mbox"><div class="mhdr">${t(h,"serviceEntry")} <button class="closebtn" id="mclose">\u2715</button></div><div class="mrow2">${inp("m-date","date","",today())} ${inp("m-km","number",t(h,"km"),v.km||"")}</div><div class="mfld"><label>${t(h,"work")}</label><div class="cbgrid">${svcs}</div></div><div class="mfld"><label>${t(h,"notes")}</label>${inp("m-notes","text",t(h,"workshopPh"))}</div><div class="mbtn-row"><button class="sbtn" id="m-save-svc">${t(h,"save")}</button></div></div></div>`;this._paint();}
-  _showRepModal(){const v=this._v();const h=this._hass;const catOpts=Object.entries(REP_LABELS[_lang(h)]||REP_LABELS.de).map(([k,l])=>({v:k,l}));this._modal=`<div class="overlay" id="modal"><div class="mbox"><div class="mhdr">${t(h,"repair")} <button class="closebtn" id="mclose">\u2715</button></div><div class="mrow2">${inp("r-date","date","",today())} ${inp("r-km","number",t(h,"km"),v.km||"")}</div><div class="mfld"><label>${t(h,"category")}</label>${sel("r-cat",catOpts)}</div><div class="mfld"><label>${t(h,"description")}</label>${inp("r-desc","text",t(h,"repairPh"))}</div><div class="mfld"><label>${t(h,"cost")}</label>${inp("r-cost","number","0")}</div><div class="mbtn-row"><button class="sbtn" id="m-save-rep">${t(h,"save")}</button></div></div></div>`;this._paint();}
+  _showRepModal(){const v=this._v();const h=this._hass;const catOpts=Object.entries(REP_LABELS[_lang(h)]||REP_LABELS.en).map(([k,l])=>({v:k,l}));this._modal=`<div class="overlay" id="modal"><div class="mbox"><div class="mhdr">${t(h,"repair")} <button class="closebtn" id="mclose">\u2715</button></div><div class="mrow2">${inp("r-date","date","",today())} ${inp("r-km","number",t(h,"km"),v.km||"")}</div><div class="mfld"><label>${t(h,"category")}</label>${sel("r-cat",catOpts)}</div><div class="mfld"><label>${t(h,"description")}</label>${inp("r-desc","text",t(h,"repairPh"))}</div><div class="mfld"><label>${t(h,"cost")}</label>${inp("r-cost","number","0")}</div><div class="mbtn-row"><button class="sbtn" id="m-save-rep">${t(h,"save")}</button></div></div></div>`;this._paint();}
   _showTireModal(){const v=this._v();const h=this._hass;const wp=wheelPos(h);const wOpts=WIDTHS.map(w=>({v:w,l:w})),rOpts=RATIOS.map(r=>({v:r,l:r})),rimOpts=RIMS.map(r=>({v:r,l:r})),pOpts=PROF_STEPS.map(p=>({v:p,l:p.toFixed(1)+" mm"}));this._modal=`<div class="overlay" id="modal"><div class="mbox"><div class="mhdr">${t(h,"enterTires")} <button class="closebtn" id="mclose">\u2715</button></div><div class="mrow2">${inp("t-date","date","",today())} ${inp("t-km","number",t(h,"km"),v.km||"")}</div><div class="mrow2"><div class="mfld"><label>${t(h,"type")}</label>${sel("t-type",[{v:"summer",l:tireTypeLabel(h,"summer")},{v:"winter",l:tireTypeLabel(h,"winter")},{v:"allseason",l:tireTypeLabel(h,"allseason")}])}</div><div class="mfld"><label>${t(h,"axle")}</label>${sel("t-axle",[{v:"all",l:axleLabel(h,"all")},{v:"front",l:axleLabel(h,"front")},{v:"rear",l:axleLabel(h,"rear")}])}</div></div><div class="mfld"><label>${t(h,"size")}</label><div class="sizerow">${sel("t-w",wOpts,"205")}<span class="sep">/</span>${sel("t-r",rOpts,"55")}<span class="sep">R</span>${sel("t-rim",rimOpts,"16")}</div><div class="sizeprev" id="sp">\u2192 205/55 R16</div></div><div class="mrow2"><div class="mfld"><label>${t(h,"brand")}</label>${inp("t-brand","text","Michelin")}</div><div class="mfld"><label>DOT</label>${inp("t-dot","text","2323","","maxlength='4'")}<div class="dotprev" id="dp"></div></div></div><div class="mfld"><label>${t(h,"treadDepth")}</label><div class="profgrid"><div><label class="plbl">${wp[0]}</label>${sel("t-vl",pOpts,"8.0")}</div><div><label class="plbl">${wp[1]}</label>${sel("t-vr",pOpts,"8.0")}</div><div><label class="plbl">${wp[2]}</label>${sel("t-hl",pOpts,"8.0")}</div><div><label class="plbl">${wp[3]}</label>${sel("t-hr",pOpts,"8.0")}</div></div></div><div class="mbtn-row"><button class="sbtn" id="m-save-tire">${t(h,"save")}</button></div></div></div>`;this._paint();}
   _showKmModal(){const v=this._v();const h=this._hass;this._modal=`<div class="overlay" id="modal"><div class="mbox" style="max-width:340px"><div class="mhdr">${t(h,"updateKm")} <button class="closebtn" id="mclose">\u2715</button></div><div class="mfld"><label>${t(h,"odometer")}</label><input id="km-val" type="number" value="${v.km||0}" style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--divider-color);background:var(--secondary-background-color);color:var(--primary-text-color);font-size:18px;font-weight:500;box-sizing:border-box;text-align:right"/></div><div class="mbtn-row"><button class="sbtn" id="m-save-km">${t(h,"save")}</button></div></div></div>`;this._paint();}
   _showEditSvcModal(hist,idx){const v=this._v(),he=hist[idx];const h=this._hass;const svcs=(v.services||[]).map(sid=>`<label class="cblabel"><input type="checkbox" class="svc-cb" value="${sid}" ${(he.services||[]).includes(sid)?"checked":""}> ${svcLabel(h,sid)}</label>`).join("");this._editIdx=idx;this._editHist=hist;this._modal=`<div class="overlay" id="modal"><div class="mbox"><div class="mhdr">${t(h,"editEntry")} <button class="closebtn" id="mclose">\u2715</button></div><div class="mrow2"><input id="m-date" type="date" value="${he.date}"/><input id="m-km" type="number" value="${he.km||0}"/></div><div class="mfld"><label>${t(h,"work")}</label><div class="cbgrid">${svcs}</div></div><div class="mfld"><label>${t(h,"notes")}</label><input id="m-notes" type="text" value="${he.notes||""}"/></div><div class="mbtn-row"><button class="sbtn" id="m-save-edit-svc">${t(h,"update")}</button></div></div></div>`;this._paint();}
@@ -493,15 +416,14 @@ class VehicleServiceCard extends HTMLElement {
     s.getElementById("btn-svc")?.addEventListener("click",()=>this._showSvcModal());
     s.getElementById("btn-csv")?.addEventListener("click",async()=>{
         const vid=this._vid();
-        const response=await this._ws({type:`${DOMAIN}/get_export_data`,vehicle_id:vid});
-        const data=response.result || response;
+        const v=this._v();
         const rows=[["Date", "KM", "Category", "Description", "Cost"]];
-        (data.history||[]).forEach(h=>rows.push([h.date,h.km,"Service",h.services.join("; "), ""]));
-        (data.repairs||[]).forEach(r=>rows.push([r.date,r.km,r.cat,r.desc,r.cost]));
-        const csvContent="data:text/csv;charset=utf-8," + rows.map(e=>e.map(c=>`"${c}"`).join(",")).join("\n");
+        (v.history||[]).forEach(h=>rows.push([h.date,h.km,"Service",(h.services||[]).join("; "), ""]));
+        (v.repairs||[]).forEach(r=>rows.push([r.date,r.km,r.cat,r.desc,r.cost]));
+        const csvContent="data:text/csv;charset=utf-8," + rows.map(e=>e.map(c=>`"${c||""}"`).join(",")).join("\n");
         const link=document.createElement("a");
         link.href=encodeURI(csvContent);
-        link.download=`service_history_${(data.vehicle_name||"export").replace(/\s+/g,"_")}.csv`;
+        link.download=`service_history_${((v.make||"")+" "+(v.model||"")).trim().replace(/\s+/g,"_")||"export"}.csv`;
         link.click();
     });
     s.getElementById("btn-rep")?.addEventListener("click",()=>this._showRepModal());

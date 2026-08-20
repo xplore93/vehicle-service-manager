@@ -1,10 +1,11 @@
 # Changelog
 
-## [1.1.2] - 2026-08-19
+## [1.0] - 2026-08-21
 
 ### Fixed
 - Removed the dead Lovelace auto-registration (`CARD_RESOURCES` was never defined); it
-  crashed on first vehicle setup. Cards are provided by the separate `vehicle-service-card` repo
+  crashed on first vehicle setup. The Lovelace cards are bundled in this repository and
+  auto-registered on setup
 - Options-flow edits (intervals, km, make/model) now reach the shared store on every setup,
   so editing settings actually changes the sensors
 - Negative indices in the store (`history[-1]` mutation/pop) are now rejected; WS index
@@ -26,29 +27,13 @@
 - Date math uses the HA timezone; dropped the incorrect `integration_type: "hub"`
 
 ### Changed
-- Entity names moved to translations (`_attr_translation_key`) with `en`/`de` locales
+- Entity names moved to translations (`_attr_translation_key`) with the `en` locale
+- Removed the unused `get_export_data` WebSocket command (the card builds the CSV export
+  from its already-loaded vehicle data); German translations removed
 
-## [1.1.1]
+## [Initial] - fork of the original project
 
-- Manifest version bump (intended card-picker fix; not shipped via HACS, which ships the root
-  `custom_components/` tree)
-
-## [1.0.10]
-
-- Lovelace cards moved to the separate `vehicle-service-card` repository (`www/` removed)
-
-## [1.0.9]
-
-- Lovelace card updates
-
-## [1.0.8]
-
-- First public release (integration + bundled Lovelace cards)
-
-## [1.0.7] - 2026-05-29
-
-### Added
-- Initial release
+Baseline at fork time:
 - 11 service points with km and time intervals
 - Correct due calculation from Erstzulassung (first registration date)
 - Live KM reading via HA sensor entity (OBD, vehicle integrations)
@@ -56,8 +41,6 @@
 - Service history with edit and delete
 - Repairs & wear tracking
 - Tyre tracking with tread depth projection (1.5mm / 10,000km)
-- Full Lovelace dashboard card (`vehicle-service-card`)
-- Compact icon-strip Lovelace card (`vehicle-service-compact-card`)
 - Binary sensors for automations
 - HA services for automation-based entry creation
 - Store cleanup on vehicle deletion
