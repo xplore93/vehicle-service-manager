@@ -208,7 +208,7 @@ class VehicleServiceConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         return VehicleServiceOptionsFlow(config_entry)
 
 
-class VehicleServiceOptionsFlow(config_entries.OptionsFlowWithReload):
+class VehicleServiceOptionsFlow(config_entries.OptionsFlow):
     """Allow editing ALL vehicle data after setup."""
 
     def __init__(self, config_entry: config_entries.ConfigEntry) -> None:

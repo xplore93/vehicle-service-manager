@@ -3,11 +3,14 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
 from typing import Any
 
 import voluptuous as vol
 
 from homeassistant.components import websocket_api
+from homeassistant.components.frontend import add_extra_js_url
+from homeassistant.components.http import StaticPathConfig
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, ServiceCall, callback
 from homeassistant.helpers.event import async_track_state_change_event
@@ -21,6 +24,7 @@ from .const import (
     SERVICE_HU, CONF_INITIAL_HU_DATE, CONF_INITIAL_HU_KM,
     EVENT_SERVICE_ENTRY_ADDED, EVENT_KM_UPDATED,
     ALL_SERVICE_IDS,
+    INTEGRATION_VERSION,
 )
 from .store import get_store, VehicleServiceStore
 
@@ -93,6 +97,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                     _LOGGER.info("Initial KM from entity %s: %d", entity_km, current_km)
             except (ValueError, TypeError):
                 pass
+
+    url = f"/vehicle_service/{INTEGRATION_VERSION}/vehicle-service-card.js"
+    if url not in hass.data["frontend_extra_module_url"].urls:
+        file_path = os.path.join(os.path.dirname(__file__), "frontend", "vehicle-service-card.js")
+        await hass.http.async_register_static_paths([StaticPathConfig(url, str(file_path), False)])
+        add_extra_js_url(hass, url)
 
     return True
 
