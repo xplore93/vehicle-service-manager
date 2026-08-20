@@ -420,11 +420,13 @@ class VehicleServiceCard extends HTMLElement {
         const rows=[["Date", "KM", "Category", "Description", "Cost"]];
         (v.history||[]).forEach(h=>rows.push([h.date,h.km,"Service",(h.services||[]).join("; "), ""]));
         (v.repairs||[]).forEach(r=>rows.push([r.date,r.km,r.cat,r.desc,r.cost]));
-        const csvContent="data:text/csv;charset=utf-8," + rows.map(e=>e.map(c=>`"${c||""}"`).join(",")).join("\n");
+        const csvText=rows.map(e=>e.map(c=>`"${String(c??"").replace(/"/g,'""')}"`).join(",")).join("\n");
+        const url=URL.createObjectURL(new Blob(["\uFEFF"+csvText],{type:"text/csv;charset=utf-8"}));
         const link=document.createElement("a");
-        link.href=encodeURI(csvContent);
+        link.href=url;
         link.download=`service_history_${((v.make||"")+" "+(v.model||"")).trim().replace(/\s+/g,"_")||"export"}.csv`;
         link.click();
+        setTimeout(()=>URL.revokeObjectURL(url),4000);
     });
     s.getElementById("btn-rep")?.addEventListener("click",()=>this._showRepModal());
     s.getElementById("btn-tire")?.addEventListener("click",()=>this._showTireModal());
