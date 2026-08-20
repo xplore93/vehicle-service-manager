@@ -28,8 +28,7 @@
 
 ### Changed
 - Entity names moved to translations (`_attr_translation_key`) with the `en` locale
-- Removed the unused `get_export_data` WebSocket command (the card builds the CSV export
-  from its already-loaded vehicle data); German translations removed
+- Removed the unused `get_export_data` WebSocket command; German translations removed
 
 ## [Initial] - fork of the original project
 
