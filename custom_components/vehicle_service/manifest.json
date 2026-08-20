@@ -1,7 +1,7 @@
 {
   "domain": "vehicle_service",
   "name": "Vehicle Service Manager",
-  "version": "1.0",
+  "version": "1.0.1",
   "documentation": "https://github.com/xplore93/vehicle-service-manager#readme",
   "issue_tracker": "https://github.com/xplore93/vehicle-service-manager/issues",
   "codeowners": [

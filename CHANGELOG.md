@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.1] - 2026-08-21
+
+### Fixed
+- CSV export in the card: download via a Blob object URL instead of a `data:` URL,
+  which browsers block as an insecure connection and produced an empty file; added
+  proper CSV field quoting and a UTF-8 BOM
+
 ## [1.0] - 2026-08-21
 
 ### Fixed
