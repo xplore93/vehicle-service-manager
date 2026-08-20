@@ -3,10 +3,13 @@ import json
 import os
 from datetime import timedelta
 
+# Single source of truth for the version: manifest.json
+with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "manifest.json")) as f:
+    INTEGRATION_VERSION = json.load(f)["version"].split("-")[0]
+
 # Constants
 DOMAIN = "vehicle_service"
 PLATFORMS = ["sensor", "binary_sensor"]
-INTEGRATION_VERSION = "112"
 
 # Storage
 STORAGE_VERSION = 1

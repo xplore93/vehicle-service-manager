@@ -1,6 +1,7 @@
 /**
- * Vehicle Service Manager - Lovelace Cards v1.6.2
+ * Vehicle Service Manager - Lovelace Cards
  * Includes: vehicle-service-card + vehicle-service-compact-card
+ * Version is fetched from the backend (vehicle_service/version) at runtime.
  */
 
 // ── LitElement / Base Resolution ──────────────────────────────────────────────
@@ -13,6 +14,26 @@ const _LitElement = () => {
 };
 
 const DOMAIN = "vehicle_service";
+
+// Version comes from the backend — single source of truth is manifest.json.
+// Logged once (with the integration's styling) when the first card loads.
+let _versionLogged = false;
+async function fetchVersion(hass) {
+  let ver = "unknown";
+  try {
+    const r = await hass.callWS({ type: `${DOMAIN}/version` });
+    ver = (r && (r.version || (r.result && r.result.version))) || "unknown";
+  } catch (e) { /* integration not loaded yet */ }
+  if (ver !== "unknown" && !_versionLogged) {
+    _versionLogged = true;
+    console.info(
+      "%c VEHICLE-SERVICE-CARD %c v" + ver + " ",
+      "background:#1976D2;color:#fff;font-weight:bold",
+      "background:#4CAF50;color:#fff"
+    );
+  }
+  return ver;
+}
 
 // ── Brand Helpers & Theme Colors ──────────────────────────────────────────────
 const BRAND_COLORS = {
@@ -354,7 +375,7 @@ class VehicleServiceCard extends HTMLElement {
 
   async _load(){
     this._loading=true;this._err=null;this._paint();
-    try{const r=await this._hass.callWS({type:`${DOMAIN}/vehicles`});const e=Object.entries(r.vehicles||{});this._vehicleIds=e.map(([id])=>id);this._vehicles=e.map(([,v])=>v);this._loading=false;}
+    try{const r=await this._hass.callWS({type:`${DOMAIN}/vehicles`});const e=Object.entries(r.vehicles||{});this._vehicleIds=e.map(([id])=>id);this._vehicles=e.map(([,v])=>v);this._version=await fetchVersion(this._hass);this._loading=false;}
     catch(e){this._err=`${e.message||e}`;this._loading=false;}
     this._paint();
   }
@@ -472,14 +493,15 @@ class VehicleServiceCard extends HTMLElement {
     s.getElementById("btn-svc")?.addEventListener("click",()=>this._showSvcModal());
     s.getElementById("btn-csv")?.addEventListener("click",async()=>{
         const vid=this._vid();
-        const data=await this._ws({type:`${DOMAIN}/get_export_data`,vehicle_id:vid});
+        const response=await this._ws({type:`${DOMAIN}/get_export_data`,vehicle_id:vid});
+        const data=response.result || response;
         const rows=[["Date", "KM", "Category", "Description", "Cost"]];
-        data.history.forEach(h=>rows.push([h.date,h.km,"Service",h.services.join("; "), ""]));
-        data.repairs.forEach(r=>rows.push([r.date,r.km,r.cat,r.desc,r.cost]));
+        (data.history||[]).forEach(h=>rows.push([h.date,h.km,"Service",h.services.join("; "), ""]));
+        (data.repairs||[]).forEach(r=>rows.push([r.date,r.km,r.cat,r.desc,r.cost]));
         const csvContent="data:text/csv;charset=utf-8," + rows.map(e=>e.map(c=>`"${c}"`).join(",")).join("\n");
         const link=document.createElement("a");
         link.href=encodeURI(csvContent);
-        link.download=`service_history_${data.vehicle_name.replace(/\s+/g,"_")}.csv`;
+        link.download=`service_history_${(data.vehicle_name||"export").replace(/\s+/g,"_")}.csv`;
         link.click();
     });
     s.getElementById("btn-rep")?.addEventListener("click",()=>this._showRepModal());
@@ -540,6 +562,7 @@ class VehicleServiceCompactCard extends HTMLElement {
       const entries = Object.entries(res.vehicles || {});
       this._vehicleIds = entries.map(([id]) => id);
       this._vehicles = entries.map(([, v]) => v);
+      this._version = await fetchVersion(this._hass);
       this._loading = false;
     } catch (e) {
       this._err = `${e.message || e}`;
@@ -700,8 +723,4 @@ window.customCards.push(
   }
 );
 
-console.info(
-  "%c VEHICLE-SERVICE-CARD %c v1.6.2 ",
-  "background:#1976D2;color:#fff;font-weight:bold",
-  "background:#4CAF50;color:#fff"
-);
+// Version banner is logged once by fetchVersion() when the first card loads.

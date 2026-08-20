@@ -13,6 +13,7 @@ from .const import (
     ALL_SERVICE_IDS,
     EVENT_SERVICE_ENTRY_ADDED,
     EVENT_KM_UPDATED,
+    INTEGRATION_VERSION,
 )
 from .coordinator import VehicleServiceCoordinator
 
@@ -29,6 +30,11 @@ def async_register_websocket(hass: HomeAssistant) -> None:
         await coordinator.async_load()
         # Returns enriched vehicles (with service_reports and tire_reports)
         connection.send_result(msg["id"], {"vehicles": coordinator.get_vehicles()})
+
+    @websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/version"})
+    @websocket_api.async_response
+    async def ws_version(hass, connection, msg):
+        connection.send_result(msg["id"], {"version": INTEGRATION_VERSION})
 
     @websocket_api.websocket_command({
         vol.Required("type"): f"{DOMAIN}/add_service_entry",
@@ -276,6 +282,7 @@ def async_register_websocket(hass: HomeAssistant) -> None:
 
     for fn in [
         ws_get_vehicles,
+        ws_version,
         ws_add_service_entry,
         ws_delete_service_entry,
         ws_add_repair,
