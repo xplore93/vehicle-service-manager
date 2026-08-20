@@ -422,7 +422,7 @@ class VehicleServiceCard extends HTMLElement {
       const editBtn=he.auto?"":`<button class="ibtn edit-svc" data-idx="${i}">\u270E</button>`;
       return`<div class="hrow"><div class="hd">${fd(he.date,h)}${he.auto?`<span class="atag">auto</span>`:""}<div class="hkm">${fkm(he.km,h)}</div></div><div class="hb">${he.notes?`<div class="hn">${he.notes}</div>`:""}<div class="chrow">${chips}</div></div><div style="display:flex;gap:2px">${editBtn}<button class="ibtn del-svc" data-idx="${i}">\u2715</button></div></div>`;
     }).join("");
-    return`<div class="tc"><div class="shdr"><span>${t(h,"entries")}</span><button class="addbtn" id="btn-svc">${t(h,"addEntry")}</button></div>${rows||`<div class="empty">${t(h,"noEntries")}</div>`}</div>`;
+    return`<div class="tc"><div class="shdr"><span>${t(h,"entries")}</span><div><button class="addbtn" id="btn-csv" style="margin-right:8px">CSV</button><button class="addbtn" id="btn-svc">${t(h,"addEntry")}</button></div></div>${rows||`<div class="empty">${t(h,"noEntries")}</div>`}</div>`;
   }
 
   _repairs(v){
@@ -470,6 +470,18 @@ class VehicleServiceCard extends HTMLElement {
     s.querySelectorAll(".pill").forEach(b=>b.addEventListener("click",()=>{this._cur=parseInt(b.dataset.i);this._paint();}));
     s.querySelectorAll(".tab").forEach(b=>b.addEventListener("click",()=>{this._tab=b.dataset.tab;this._paint();}));
     s.getElementById("btn-svc")?.addEventListener("click",()=>this._showSvcModal());
+    s.getElementById("btn-csv")?.addEventListener("click",async()=>{
+        const vid=this._vid();
+        const data=await this._ws({type:`${DOMAIN}/get_export_data`,vehicle_id:vid});
+        const rows=[["Date", "KM", "Category", "Description", "Cost"]];
+        data.history.forEach(h=>rows.push([h.date,h.km,"Service",h.services.join("; "), ""]));
+        data.repairs.forEach(r=>rows.push([r.date,r.km,r.cat,r.desc,r.cost]));
+        const csvContent="data:text/csv;charset=utf-8," + rows.map(e=>e.map(c=>`"${c}"`).join(",")).join("\n");
+        const link=document.createElement("a");
+        link.href=encodeURI(csvContent);
+        link.download=`service_history_${data.vehicle_name.replace(/\s+/g,"_")}.csv`;
+        link.click();
+    });
     s.getElementById("btn-rep")?.addEventListener("click",()=>this._showRepModal());
     s.getElementById("btn-tire")?.addEventListener("click",()=>this._showTireModal());
     s.getElementById("mclose")?.addEventListener("click",()=>this._closeModal());

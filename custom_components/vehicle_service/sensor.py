@@ -19,7 +19,7 @@ from .const import (
     EVENT_SERVICE_ENTRY_ADDED, EVENT_KM_UPDATED,
     TIRE_WEAR_PER_KM, TIRE_WARN_SUMMER_MM, TIRE_WARN_WINTER_MM, TIRE_LEGAL_MIN_MM,
 )
-from .store import get_store, VehicleServiceStore
+from .coordinator import VehicleServiceCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -30,10 +30,10 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up sensor entities for each selected service point."""
-    store = get_store(hass)
-    await store.async_load()
+    coordinator = VehicleServiceCoordinator(hass)
+    await coordinator.async_load()
     vehicle_id: str = hass.data[DOMAIN][entry.entry_id]["vehicle_id"]
-    vehicle = store.get_vehicle(vehicle_id)
+    vehicle = coordinator.get_vehicle(vehicle_id)
 
     if vehicle is None:
         return
@@ -41,12 +41,12 @@ async def async_setup_entry(
     entities: list[SensorEntity] = []
 
     for svc_id in vehicle.get("services", []):
-        entities.append(ServiceStatusSensor(hass, store, vehicle_id, svc_id, entry))
+        entities.append(ServiceStatusSensor(hass, coordinator, vehicle_id, svc_id, entry))
 
-    entities.append(KmSensor(hass, store, vehicle_id, entry))
+    entities.append(KmSensor(hass, coordinator, vehicle_id, entry))
 
     for pos in ["vl", "vr", "hl", "hr"]:
-        entities.append(TireDepthSensor(hass, store, vehicle_id, pos, entry))
+        entities.append(TireDepthSensor(hass, coordinator, vehicle_id, pos, entry))
 
     async_add_entities(entities, update_before_add=True)
 
@@ -68,82 +68,6 @@ async def async_setup_entry(
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
-def _months_since(iso_date: str) -> float:
-    """Return months elapsed since an ISO date string (HA timezone)."""
-    try:
-        d = date.fromisoformat(iso_date)
-    except (ValueError, TypeError):
-        return 0.0
-    return (hass_dt.now().date() - d).days / 30.44
-
-
-def _calc_pct(vehicle: dict, svc_id: str) -> tuple[float, float | None, float | None]:
-    """Return (pct, km_left, months_left) — worst of km and time axes."""
-    last = vehicle.get("lastService", {}).get(svc_id, {})
-    intv = vehicle.get("intervals", {}).get(svc_id, {})
-    ez_date: str | None = vehicle.get("ezDate")
-    current_km: int = vehicle.get("km", 0)
-
-    km_pct: float | None = None
-    km_left: float | None = None
-    time_pct: float | None = None
-    months_left: float | None = None
-
-    if intv.get("km"):
-        base_km = last.get("km") or 0
-        driven = current_km - base_km
-        # Clamp: current km below the base km (odometer swap) must not go negative
-        km_pct = min(100.0, max(0.0, round(driven / intv["km"] * 100, 1)))
-        km_left = max(0.0, intv["km"] - driven)
-
-    if intv.get("months"):
-        base_date = last.get("date") or ez_date
-        if base_date:
-            ms = _months_since(base_date)
-            time_pct = min(100.0, round(ms / intv["months"] * 100, 1))
-            months_left = max(0.0, round(intv["months"] - ms, 1))
-        else:
-            time_pct = 0.0
-            months_left = float(intv["months"])
-
-    pct = (
-        max(p for p in [km_pct, time_pct] if p is not None)
-        if (km_pct is not None or time_pct is not None)
-        else 0.0
-    )
-    return pct, km_left, months_left
-
-
-def _status_from_pct(pct: float) -> str:
-    if pct >= 100:
-        return "overdue"
-    if pct >= 90:
-        return "due"
-    if pct >= 70:
-        return "soon"
-    if pct >= 50:
-        return "watch"
-    return "ok"
-
-
-def _device_info(store: VehicleServiceStore, vehicle_id: str) -> DeviceInfo:
-    vehicle = store.get_vehicle(vehicle_id)
-    make = vehicle.get("make", "") if vehicle else ""
-    model = vehicle.get("model", "") if vehicle else ""
-    info: dict[str, Any] = {
-        "identifiers": {(DOMAIN, vehicle_id)},
-        "name": f"{make} {model}".strip() or vehicle_id,
-    }
-    if make:
-        info["manufacturer"] = make
-    if model:
-        info["model"] = model
-    vin = (vehicle.get("vin") or "").strip() if vehicle else ""
-    if vin:
-        info["serial_number"] = vin
-    return DeviceInfo(**info)
-
-
 # ── Service status sensor ─────────────────────────────────────────────────────
 
 class ServiceStatusSensor(SensorEntity):
@@ -155,12 +79,12 @@ class ServiceStatusSensor(SensorEntity):
     def __init__(
         self,
         hass: HomeAssistant,
-        store: VehicleServiceStore,
+        coordinator: VehicleServiceCoordinator,
         vehicle_id: str,
         svc_id: str,
         entry: ConfigEntry,
     ) -> None:
-        self._store = store
+        self.coordinator = coordinator
         self._vehicle_id = vehicle_id
         self._svc_id = svc_id
         self._attr_unique_id = f"{vehicle_id}_{svc_id}_status"
@@ -170,20 +94,21 @@ class ServiceStatusSensor(SensorEntity):
 
     @property
     def device_info(self) -> DeviceInfo:
-        return _device_info(self._store, self._vehicle_id)
+        """Return device information about this vehicle."""
+        return self.coordinator.get_vehicle_device_info(self._vehicle_id)
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         return self._extra
 
     async def async_update(self) -> None:
-        """Update state — synchronous store read wrapped in async def."""
-        vehicle = self._store.get_vehicle(self._vehicle_id)
+        """Update state."""
+        vehicle = self.coordinator.get_vehicle(self._vehicle_id)
         if vehicle is None:
             return
 
-        pct, km_left, months_left = _calc_pct(vehicle, self._svc_id)
-        status = _status_from_pct(pct)
+        pct, km_left, months_left = self.coordinator.calc_service_pct(vehicle, self._svc_id)
+        status = self.coordinator.get_status_from_pct(pct)
         self._attr_native_value = status
 
         last = vehicle.get("lastService", {}).get(self._svc_id, {})
@@ -216,21 +141,22 @@ class KmSensor(SensorEntity):
     def __init__(
         self,
         hass: HomeAssistant,
-        store: VehicleServiceStore,
+        coordinator: VehicleServiceCoordinator,
         vehicle_id: str,
         entry: ConfigEntry,
     ) -> None:
-        self._store = store
+        self.coordinator = coordinator
         self._vehicle_id = vehicle_id
         self._attr_unique_id = f"{vehicle_id}_km"
         self._attr_translation_key = "km"
 
     @property
     def device_info(self) -> DeviceInfo:
-        return _device_info(self._store, self._vehicle_id)
+        """Return device information about this vehicle."""
+        return self.coordinator.get_vehicle_device_info(self._vehicle_id)
 
     async def async_update(self) -> None:
-        vehicle = self._store.get_vehicle(self._vehicle_id)
+        vehicle = self.coordinator.get_vehicle(self._vehicle_id)
         if vehicle:
             self._attr_native_value = vehicle.get("km", 0)
 
@@ -247,12 +173,12 @@ class TireDepthSensor(SensorEntity):
     def __init__(
         self,
         hass: HomeAssistant,
-        store: VehicleServiceStore,
+        coordinator: VehicleServiceCoordinator,
         vehicle_id: str,
         position: str,
         entry: ConfigEntry,
     ) -> None:
-        self._store = store
+        self.coordinator = coordinator
         self._vehicle_id = vehicle_id
         self._position = position
         self._attr_unique_id = f"{vehicle_id}_tire_{position}"
@@ -261,60 +187,23 @@ class TireDepthSensor(SensorEntity):
 
     @property
     def device_info(self) -> DeviceInfo:
-        return _device_info(self._store, self._vehicle_id)
+        """Return device information about this vehicle."""
+        return self.coordinator.get_vehicle_device_info(self._vehicle_id)
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         return self._extra
 
     async def async_update(self) -> None:
-        vehicle = self._store.get_vehicle(self._vehicle_id)
+        vehicle = self.coordinator.get_vehicle(self._vehicle_id)
         if vehicle is None:
             return
 
-        tires = vehicle.get("tires", [])
-        if not tires:
+        tire_data = self.coordinator.calc_tire_wear(vehicle, self._position)
+        
+        if not tire_data:
             self._attr_native_value = None
             return
 
-        # Latest entry that has a value for THIS position — an axle-only set
-        # (e.g. rear tires swapped) must not shadow the previous full set
-        latest: dict[str, Any] | None = None
-        for tire in reversed(tires):
-            if float(tire.get(self._position) or 0) > 0:
-                latest = tire
-                break
-        if latest is None:
-            self._attr_native_value = None
-            return
-
-        orig = float(latest.get(self._position) or 0)
-
-        mounted_km = int(latest.get("km") or 0)
-        current_km = vehicle.get("km", 0)
-        driven = max(0, current_km - mounted_km)
-        worn = round(max(0.0, orig - driven * TIRE_WEAR_PER_KM), 2)
-
-        tire_type = latest.get("type", "summer")
-        warn_mm = TIRE_WARN_WINTER_MM if tire_type in ("winter", "allseason") else TIRE_WARN_SUMMER_MM
-
-        if worn <= TIRE_LEGAL_MIN_MM:
-            status = "critical"
-        elif worn <= warn_mm:
-            status = "warning"
-        else:
-            status = "ok"
-
-        self._attr_native_value = worn
-        self._extra = {
-            "original_depth_mm": orig,
-            "mounted_km": mounted_km,
-            "driven_km": driven,
-            "status": status,
-            "warn_limit_mm": warn_mm,
-            "legal_min_mm": TIRE_LEGAL_MIN_MM,
-            "tire_type": tire_type,
-            "brand": latest.get("brand", ""),
-            "size": f"{latest.get('width','')}/{latest.get('ratio','')} R{latest.get('rim','')}",
-            "dot": latest.get("dot", ""),
-        }
+        self._attr_native_value = tire_data["worn"]
+        self._extra = {k: v for k, v in tire_data.items() if k != "worn"}

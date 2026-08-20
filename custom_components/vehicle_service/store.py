@@ -112,11 +112,6 @@ class VehicleServiceStore:
             raise KeyError(f"Vehicle {vehicle_id} not found")
         entry = {"date": entry_date, "km": km, "services": services, "notes": notes, "auto": auto}
         vehicle.setdefault("history", []).append(entry)
-        last_service = vehicle.setdefault("lastService", {})
-        for svc_id in services:
-            current = last_service.get(svc_id, {})
-            if not current or km >= (current.get("km") or 0):
-                last_service[svc_id] = {"km": km, "date": entry_date}
         await self.async_save()
         return entry
 
@@ -134,7 +129,6 @@ class VehicleServiceStore:
             "date": entry_date, "km": km, "services": services, "notes": notes,
             "auto": history[entry_index].get("auto", False),
         }
-        self._recalc_last_service(vehicle)
         await self.async_save()
 
     async def async_delete_service_entry(self, vehicle_id: str, entry_index: int) -> None:
@@ -144,20 +138,7 @@ class VehicleServiceStore:
         history = vehicle.get("history", [])
         if 0 <= entry_index < len(history):
             history.pop(entry_index)
-        self._recalc_last_service(vehicle)
         await self.async_save()
-
-    def _recalc_last_service(self, vehicle: dict[str, Any]) -> None:
-        history = vehicle.get("history", [])
-        last_service: dict[str, Any] = {}
-        for entry in history:
-            km = entry.get("km") or 0
-            entry_date = entry.get("date")
-            for svc_id in entry.get("services", []):
-                current = last_service.get(svc_id, {})
-                if not current or km >= (current.get("km") or 0):
-                    last_service[svc_id] = {"km": km, "date": entry_date}
-        vehicle["lastService"] = last_service
 
     # ── Repairs ───────────────────────────────────────────────────────────────
 
