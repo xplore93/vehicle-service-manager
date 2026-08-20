@@ -634,14 +634,14 @@ window.customCards.push(
     name: "Vehicle Service Manager",
     description: "Service status, repairs and tire tracking",
     preview: true,
-    documentationURL: "https://github.com/toxictody1337/vehicle-service-card",
+    documentationURL: "https://github.com/xplore93/vehicle-service-card",
   },
   {
     type: "vehicle-service-compact-card",
     name: "Vehicle Service Manager – Compact",
     description: "Service status, repairs and tire tracking (compact)",
     preview: true,
-    documentationURL: "https://github.com/toxictody1337/vehicle-service-card",
+    documentationURL: "https://github.com/xplore93/vehicle-service-card",
   }
 );
 

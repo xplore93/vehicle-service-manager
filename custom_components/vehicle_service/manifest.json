@@ -2,10 +2,10 @@
   "domain": "vehicle_service",
   "name": "Vehicle Service Manager",
   "version": "1.0",
-  "documentation": "https://github.com/toxictody1337/vehicle-service-manager#readme",
-  "issue_tracker": "https://github.com/toxictody1337/vehicle-service-manager/issues",
+  "documentation": "https://github.com/xplore93/vehicle-service-manager#readme",
+  "issue_tracker": "https://github.com/xplore93/vehicle-service-manager/issues",
   "codeowners": [
-    "@toxictody1337"
+    "@xplore93"
   ],
   "requirements": [],
   "config_flow": true,

@@ -48,7 +48,7 @@ Tracks service intervals, repairs and tire wear for your vehicles — as a nativ
 ### 1. Add the repositories
 
 1. Open HACS → **Integrations** → three dots → **Custom repositories**
-2. URL: `https://github.com/toxictody1337/vehicle-service-manager` — category: **Integration**
+2. URL: `https://github.com/xplore93/vehicle-service-manager` — category: **Integration**
 3. **Add** → then search the HACS store and install
 4. Restart Home Assistant
 
@@ -264,4 +264,4 @@ MIT License – see [LICENSE](LICENSE)
 
 ## Contribute / Issues
 
-Please report bugs or improvement suggestions as a [GitHub Issue](https://github.com/toxictody1337/vehicle-service-manager/issues).
+Please report bugs or improvement suggestions as a [GitHub Issue](https://github.com/xplore93/vehicle-service-manager/issues).
