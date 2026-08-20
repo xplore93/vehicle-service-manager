@@ -366,7 +366,7 @@ class VehicleServiceCard extends HTMLElement {
       const editBtn=he.auto?"":`<button class="ibtn edit-svc" data-idx="${i}">\u270E</button>`;
       return`<div class="hrow"><div class="hd">${fd(he.date,h)}${he.auto?`<span class="atag">auto</span>`:""}<div class="hkm">${fkm(he.km,h)}</div></div><div class="hb">${he.notes?`<div class="hn">${he.notes}</div>`:""}<div class="chrow">${chips}</div></div><div style="display:flex;gap:2px">${editBtn}<button class="ibtn del-svc" data-idx="${i}">\u2715</button></div></div>`;
     }).join("");
-    return`<div class="tc"><div class="shdr"><span>${t(h,"entries")}</span><div><button class="addbtn" id="btn-csv" style="margin-right:8px">CSV</button><button class="addbtn" id="btn-svc">${t(h,"addEntry")}</button></div></div>${rows||`<div class="empty">${t(h,"noEntries")}</div>`}</div>`;
+    return`<div class="tc"><div class="shdr"><span>${t(h,"entries")}</span><button class="addbtn" id="btn-svc">${t(h,"addEntry")}</button></div>${rows||`<div class="empty">${t(h,"noEntries")}</div>`}</div>`;
   }
 
   _repairs(v){
@@ -414,20 +414,6 @@ class VehicleServiceCard extends HTMLElement {
     s.querySelectorAll(".pill").forEach(b=>b.addEventListener("click",()=>{this._cur=parseInt(b.dataset.i);this._paint();}));
     s.querySelectorAll(".tab").forEach(b=>b.addEventListener("click",()=>{this._tab=b.dataset.tab;this._paint();}));
     s.getElementById("btn-svc")?.addEventListener("click",()=>this._showSvcModal());
-    s.getElementById("btn-csv")?.addEventListener("click",async()=>{
-        const vid=this._vid();
-        const v=this._v();
-        const rows=[["Date", "KM", "Category", "Description", "Cost"]];
-        (v.history||[]).forEach(h=>rows.push([h.date,h.km,"Service",(h.services||[]).join("; "), ""]));
-        (v.repairs||[]).forEach(r=>rows.push([r.date,r.km,r.cat,r.desc,r.cost]));
-        const csvText=rows.map(e=>e.map(c=>`"${String(c??"").replace(/"/g,'""')}"`).join(",")).join("\n");
-        const url=URL.createObjectURL(new Blob(["\uFEFF"+csvText],{type:"text/csv;charset=utf-8"}));
-        const link=document.createElement("a");
-        link.href=url;
-        link.download=`service_history_${((v.make||"")+" "+(v.model||"")).trim().replace(/\s+/g,"_")||"export"}.csv`;
-        link.click();
-        setTimeout(()=>URL.revokeObjectURL(url),4000);
-    });
     s.getElementById("btn-rep")?.addEventListener("click",()=>this._showRepModal());
     s.getElementById("btn-tire")?.addEventListener("click",()=>this._showTireModal());
     s.getElementById("mclose")?.addEventListener("click",()=>this._closeModal());
